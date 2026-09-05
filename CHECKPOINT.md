@@ -16,6 +16,7 @@
 - Added local sales orders that atomically reduce inventory.
 - Added order deletion that restores inventory quantities.
 - Added local Home and Sales dashboards.
+- Fixed tab navigation to reset scroll position; Inventory no longer autofocuses its form on mobile and jump-scrolls to the middle of the page.
 - Created docs folders: `docs/frontend`, `docs/backend`, `docs/dbSetup`, and `docs/application`.
 
 ## Verified
