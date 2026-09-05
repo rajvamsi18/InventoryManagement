@@ -17,7 +17,7 @@ A Progressive Web App (PWA) for grocery store inventory management with offline-
 ### Tech Stack
 
 - **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS
-- **Local Database:** SQLite (via Dexie.js in browser)
+- **Local Database:** IndexedDB (via Dexie.js in browser)
 - **Backend:** FastAPI (Python)
 - **Cloud Database:** PostgreSQL
 - **Hosting:** GitHub Pages (frontend) + Local laptop/Railway (backend)
@@ -75,7 +75,7 @@ See [`PROJECT_ARCHITECTURE.md`](PROJECT_ARCHITECTURE.md#part-4-development-timel
 | Decision | Choice | Why |
 |----------|--------|-----|
 | **App Type** | PWA | Works offline, shareable, no app store |
-| **Local DB** | SQLite (IndexedDB) | Offline, private, simple |
+| **Local DB** | IndexedDB (Dexie.js) | Offline, private, simple |
 | **Backend** | FastAPI (Python) | Fast, modern, like CP Portal |
 | **Hosting** | GitHub Pages + local | Free, simple, scales later |
 | **Sync** | Optional when WiFi | User chooses, not forced |
@@ -84,7 +84,7 @@ See [`PROJECT_ARCHITECTURE.md`](PROJECT_ARCHITECTURE.md#part-4-development-timel
 
 ```
 Grocery Owner's Device (Offline)
-    ↓ (Has local SQLite)
+    ↓ (Has local IndexedDB)
     ↓ (When WiFi available + sync button)
 Your Laptop/Railway Backend
     ↓ (Validates, stores in Postgres)

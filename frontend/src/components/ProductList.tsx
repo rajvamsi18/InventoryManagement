@@ -1,0 +1,6 @@
+import { Pencil, Trash2 } from 'lucide-react'
+import type { Product } from '../services/database'
+export function ProductList({ products, onDelete, onEdit }: { products: Product[]; onDelete: (product: Product) => void; onEdit?: (product: Product) => void }) {
+  if (!products.length) return <div className="empty-state"><p>No products yet.</p><span>Add your first item using the form.</span></div>
+  return <div className="product-list">{products.map((product) => <article className="product-row" key={product.id}><div><h3>{product.name}</h3><p>{product.category}</p></div><div><strong className={product.quantity <= product.lowStockAt ? 'low-stock' : ''}>{product.quantity} {product.unit}</strong><p>{product.quantity <= product.lowStockAt ? 'Low stock' : 'In stock'}</p></div><div>{product.price === undefined ? '-' : `Rs. ${product.price.toFixed(2)}`}</div><div className="row-actions">{onEdit && <button className="icon-button" onClick={() => onEdit(product)} aria-label={`Edit ${product.name}`}><Pencil size={17} /></button>}<button className="icon-button danger" onClick={() => onDelete(product)} aria-label={`Delete ${product.name}`}><Trash2 size={17} /></button></div></article>)}</div>
+}
