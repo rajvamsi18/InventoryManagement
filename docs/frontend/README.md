@@ -8,9 +8,10 @@ The `frontend/` folder contains the installable, offline-first React PWA for SMK
 
 The app uses the browser's IndexedDB via Dexie. It creates a `grocery-inventory` database on the device. Version 2 contains:
 
-- `products`: stock, cost, optional profit margin, suggested selling price, and timestamps.
+- `products`: stock, category, measurement unit, package type, cost, optional profit margin, suggested selling price, and timestamps.
 - `orders`: submitted sales orders.
 - `orderItems`: the products and prices sold in each order.
+- `categories`: user-created product categories.
 
 Data persists across refreshes and offline use, but site-data clearing can remove it. The app includes JSON backup export/import. A backend sync will provide an additional Postgres backup later.
 
@@ -18,8 +19,8 @@ Data persists across refreshes and offline use, but site-data clearing can remov
 
 - **Home**: products, sales today/month, units sold today, low-stock products, and sales snapshot.
 - **Products**: searchable product catalog. Edit opens the Inventory tab.
-- **Inventory**: add, edit, delete, search, filter, import, and export inventory.
-- **Sales**: create an order, use suggested selling prices, adjust quantity/price, submit a sale, see recent orders, and delete an order to restore stock.
+- **Inventory**: add, edit, delete, search, filter, import, and export inventory. Categories can be added, renamed, and removed when unused. Measurements and package types have standard choices plus a manual option.
+- **Sales**: create and edit orders, use suggested selling prices, adjust quantity/price, submit a sale, see recent orders, and delete an order to restore stock.
 
 ## Run and Test
 

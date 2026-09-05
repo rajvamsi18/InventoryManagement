@@ -12,7 +12,18 @@ export const PRODUCT_CATEGORIES = [
   'Other',
 ] as const
 
-export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number]
+export type ProductCategory = string
+
+export const MEASUREMENT_UNITS = [
+  'Kilograms',
+  'Grams',
+  'Litres',
+  'Millilitres',
+  'Metres',
+  'Other',
+] as const
+
+export const PACKAGE_TYPES = ['Bag', 'Piece', 'Pack', 'Case', 'Box', 'Bottle', 'Other'] as const
 
 export type Product = {
   id: string
@@ -20,6 +31,7 @@ export type Product = {
   category: ProductCategory
   quantity: number
   unit: string
+  packageType?: string
   price?: number
   profitMarginPercent?: number
   sellingPrice?: number
@@ -48,10 +60,17 @@ export type SalesOrderItem = {
   lineTotal: number
 }
 
+export type ProductCategoryOption = {
+  id: string
+  name: string
+  createdAt: string
+}
+
 const inventoryDb = new Dexie('grocery-inventory') as Dexie & {
   products: EntityTable<Product, 'id'>
   orders: EntityTable<SalesOrder, 'id'>
   orderItems: EntityTable<SalesOrderItem, 'id'>
+  categories: EntityTable<ProductCategoryOption, 'id'>
 }
 
 inventoryDb.version(1).stores({
@@ -62,6 +81,13 @@ inventoryDb.version(2).stores({
   products: 'id, name, category, updatedAt',
   orders: 'id, orderNumber, soldAt, updatedAt',
   orderItems: 'id, orderId, productId, productName, category',
+})
+
+inventoryDb.version(3).stores({
+  products: 'id, name, category, updatedAt',
+  orders: 'id, orderNumber, soldAt, updatedAt',
+  orderItems: 'id, orderId, productId, productName, category',
+  categories: 'id, name',
 })
 
 export { inventoryDb }

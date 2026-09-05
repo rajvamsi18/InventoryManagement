@@ -1,4 +1,4 @@
-import { PRODUCT_CATEGORIES, type Product, type ProductCategory } from './database'
+import { type Product } from './database'
 
 type InventoryBackup = {
   format: 'stockroom-inventory-backup'
@@ -12,7 +12,8 @@ function isProduct(value: unknown): value is Product {
   const product = value as Record<string, unknown>
   return typeof product.id === 'string'
     && typeof product.name === 'string'
-    && PRODUCT_CATEGORIES.includes(product.category as ProductCategory)
+    && typeof product.category === 'string'
+    && product.category.trim().length > 0
     && typeof product.quantity === 'number'
     && typeof product.unit === 'string'
     && (product.price === undefined || typeof product.price === 'number')
