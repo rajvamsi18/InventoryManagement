@@ -17,10 +17,11 @@ Data persists across refreshes and offline use, but site-data clearing can remov
 
 ## Views
 
-- **Home**: products, sales today/month, units sold today, low-stock products, and sales snapshot.
+- **Home**: products, sales today/month, units sold today, and sales snapshot. Low-stock products appear in a clickable table that opens product details.
 - **Products**: searchable catalog with 12 products per page. Search covers product name, brand, MRP, combined pack size/unit, category, measurement unit, and package type. Selecting a product opens stock, pricing, profit, sales, and order history details.
-- **Inventory**: add and edit stock, manage catalog options, and import/export backups. Product search redirects to Products so the stock-entry screen stays focused. Categories, brands, measurements, and package types can be added, renamed, and removed when unused.
-- **Sales**: create and edit orders, use suggested selling prices, adjust quantity/price, submit a sale, see recent orders, and delete an order to restore stock. Missing products can be created through Inventory without losing the current draft order.
+- **Inventory**: add and edit stock, manage catalog options, and import/export backups. Each configurable product dropdown has an Add new shortcut that opens/focuses the matching Catalog options section, preserves form input, and selects the newly added value automatically.
+- Stock and order quantities use whole sellable units. Pack size remains decimal-capable for weights and volumes such as 0.5 kilograms. IndexedDB v8 normalizes legacy fractional/negative stock to the nearest non-negative whole unit.
+- **Sales**: Orders summary and a separate catalog-style basket page identified by order number. Tap an order for a read-only detail page and Edit order action. Long press enters checkbox selection mode; one selection can be edited/deleted, while multiple selections can be deleted together with stock restoration.
 
 ## Run and Test
 

@@ -175,6 +175,25 @@ inventoryDb.version(7).stores({
   })))
 })
 
+inventoryDb.version(8).stores({
+  products: 'id, name, brand, category, unit, packageType, updatedAt',
+  orders: 'id, orderNumber, soldAt, updatedAt',
+  orderItems: 'id, orderId, productId, productName, category',
+  categories: 'id, name',
+  productOptions: 'id, type, &[type+name]',
+}).upgrade(async (transaction) => {
+  const products = await transaction.table('products').toArray() as Product[]
+  await transaction.table('products').bulkPut(products.map((product) => ({
+    ...product,
+    quantity: Math.max(0, Math.round(product.quantity)),
+    lowStockAt: Math.max(0, Math.round(product.lowStockAt)),
+    stockLots: product.stockLots?.map((lot) => ({
+      ...lot,
+      quantity: Math.max(0, Math.round(lot.quantity)),
+    })),
+  })))
+})
+
 inventoryDb.on('populate', (transaction) => transaction.table('productOptions').bulkAdd(defaultProductOptions(new Date().toISOString())))
 
 export { inventoryDb }

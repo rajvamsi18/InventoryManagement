@@ -33,6 +33,16 @@
 - Rounded displayed stock quantities to avoid floating-point artifacts such as `6.949999999999999`.
 - Collapsed Catalog option values until a section is selected and added product images to individual detail views.
 - Added an Add new product flow from Sales that preserves the draft order, returns automatically after save, and adds the new/matched product as an order line.
+- Replaced the Sales product dropdown with a dedicated searchable/filterable catalog basket page; order edits use the same basket and submission returns to Recent orders.
+- Replaced Home's low-stock list with a clickable Product name / Type / Brand / In stock table linked to product details.
+- Updated basket headings to show only the order number; default quick picks show four most-sold products and explicit search/filter results paginate at 12 items.
+- Cancelling an existing order edit clears its draft and returns to a New order action.
+- Added an explicit Cancel order action for new drafts: Back preserves/continues, while Cancel clears the basket. Recent orders now has Order number / Amount headers and plain numeric row amounts.
+- Replaced per-order action links with checkboxes and contextual actions below Recent orders: one selection shows Edit/Delete; multiple selections show bulk Delete with inventory restoration.
+- Hid order checkboxes by default: tap opens an order detail page, while a 550ms long press enters selection mode and reveals contextual actions.
+- Added Add new shortcuts to Brand, Category, Package type, and Measurement unit fields; they open/focus the matching Catalog options section while preserving form state and automatically selecting the new value.
+- Enforced non-negative whole-number product stock, low-stock thresholds, and sale quantities; IndexedDB v8 rounds legacy stock/lot quantities and every stock mutation stays integer-valued.
+- Removed horizontal scrolling from the Home attention table and Sales snapshot on mobile.
 - Added local Home and Sales dashboards.
 - Fixed tab navigation to reset scroll position; Inventory no longer autofocuses its form on mobile and jump-scrolls to the middle of the page.
 - Created docs folders: `docs/frontend`, `docs/backend`, `docs/dbSetup`, and `docs/application`.

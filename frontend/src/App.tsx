@@ -3,16 +3,16 @@ import { useLiveQuery } from "dexie-react-hooks";
 import {
   ArrowLeft,
   Download,
-  Plus,
   Search,
-  ShoppingCart,
   Upload,
   Warehouse,
 } from "lucide-react";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { OptionManager } from "./components/OptionManager";
+import { OrderRow } from "./components/OrderRow";
 import { ProductForm } from "./components/ProductForm";
 import { ProductList } from "./components/ProductList";
+import { SalesBasket, type BasketLine } from "./components/SalesBasket";
 import { downloadBackup, readBackup } from "./services/backup";
 import {
   inventoryDb,
@@ -24,7 +24,6 @@ import {
 import "./App.css";
 
 type Tab = "Home" | "Products" | "Inventory" | "Sales";
-type SaleLine = { productId: string; quantity: number; price: number };
 const currency = (amount: number) => `Rs. ${amount.toFixed(2)}`;
 
 function App() {
@@ -37,8 +36,17 @@ function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product>();
   const [currentPage, setCurrentPage] = useState(1);
   const [editingOrder, setEditingOrder] = useState<SalesOrder>();
-  const [saleLines, setSaleLines] = useState<SaleLine[]>([]);
+  const [saleLines, setSaleLines] = useState<BasketLine[]>([]);
+  const [showSalesBasket, setShowSalesBasket] = useState(false);
   const [addingProductForOrder, setAddingProductForOrder] = useState(false);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [viewingOrder, setViewingOrder] = useState<SalesOrder>();
+  const [requestedOptionType, setRequestedOptionType] =
+    useState<ProductOptionType>();
+  const [addedOption, setAddedOption] = useState<{
+    type: ProductOptionType;
+    name: string;
+  }>();
   const importInput = useRef<HTMLInputElement>(null);
   const products =
     useLiveQuery(
@@ -221,6 +229,7 @@ function App() {
         );
         setAddingProductForOrder(false);
         setTab("Sales");
+        setShowSalesBasket(true);
       }
       return true;
     }
@@ -270,12 +279,14 @@ function App() {
   function addProductFromOrder() {
     setEditingProduct(undefined);
     setAddingProductForOrder(true);
+    setShowSalesBasket(true);
     setTab("Inventory");
   }
 
   function returnToOrder() {
     setAddingProductForOrder(false);
     setTab("Sales");
+    setShowSalesBasket(true);
   }
   async function removeProduct(product: Product) {
     const salesCount = await inventoryDb.orderItems
@@ -364,6 +375,10 @@ function App() {
     setSelectedProduct(undefined);
     setTab("Products");
   }
+  function openProduct(product: Product) {
+    setSelectedProduct(product);
+    setTab("Products");
+  }
   async function importBackup(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -410,7 +425,7 @@ function App() {
         line,
         product: products.find((product) => product.id === line.productId),
       }))
-      .filter((entry): entry is { line: SaleLine; product: Product } =>
+      .filter((entry): entry is { line: BasketLine; product: Product } =>
         Boolean(entry.product),
       );
     const originalItems = editingOrder
@@ -430,6 +445,7 @@ function App() {
       selected.some(
         ({ line, product }) =>
           line.quantity <= 0 ||
+          !Number.isInteger(line.quantity) ||
           line.quantity > product.quantity + (restoredStock[product.id] ?? 0),
       )
     )
@@ -458,7 +474,10 @@ function App() {
           const product = await inventoryDb.products.get(item.productId);
           if (product)
             await inventoryDb.products.update(product.id, {
-              quantity: product.quantity + item.quantitySold,
+              quantity: Math.max(
+                0,
+                Math.round(product.quantity + item.quantitySold),
+              ),
               updatedAt: timestamp,
             });
         }
@@ -496,13 +515,17 @@ function App() {
         );
         for (const { line, product } of selected)
           await inventoryDb.products.update(product.id, {
-            quantity: product.quantity - line.quantity,
+            quantity: Math.max(
+              0,
+              Math.round(product.quantity - line.quantity),
+            ),
             updatedAt: timestamp,
           });
       },
     );
     setSaleLines([]);
     setEditingOrder(undefined);
+    setShowSalesBasket(false);
   }
   async function editOrder(order: SalesOrder) {
     const items = await inventoryDb.orderItems
@@ -517,31 +540,56 @@ function App() {
         price: item.unitSellingPrice,
       })),
     );
+    setShowSalesBasket(true);
   }
-  async function deleteOrder(order: SalesOrder) {
-    if (!window.confirm(`Delete ${order.orderNumber} and restore its stock?`))
+  async function deleteSelectedOrders() {
+    const selectedOrders = orders.filter((order) =>
+      selectedOrderIds.includes(order.id),
+    );
+    if (!selectedOrders.length) return;
+    if (
+      !window.confirm(
+        `Delete ${selectedOrders.length} selected order${selectedOrders.length === 1 ? "" : "s"} and restore their stock?`,
+      )
+    )
       return;
-    const items = await inventoryDb.orderItems
-      .where("orderId")
-      .equals(order.id)
-      .toArray();
     await inventoryDb.transaction(
       "rw",
       inventoryDb.products,
       inventoryDb.orders,
       inventoryDb.orderItems,
       async () => {
-        for (const item of items) {
-          const product = await inventoryDb.products.get(item.productId);
-          if (product)
-            await inventoryDb.products.update(product.id, {
-              quantity: product.quantity + item.quantitySold,
-              updatedAt: new Date().toISOString(),
-            });
+        for (const order of selectedOrders) {
+          const items = await inventoryDb.orderItems
+            .where("orderId")
+            .equals(order.id)
+            .toArray();
+          for (const item of items) {
+            const product = await inventoryDb.products.get(item.productId);
+            if (product)
+              await inventoryDb.products.update(product.id, {
+                quantity: Math.max(
+                  0,
+                  Math.round(product.quantity + item.quantitySold),
+                ),
+                updatedAt: new Date().toISOString(),
+              });
+          }
+          await inventoryDb.orderItems
+            .where("orderId")
+            .equals(order.id)
+            .delete();
+          await inventoryDb.orders.delete(order.id);
         }
-        await inventoryDb.orderItems.where("orderId").equals(order.id).delete();
-        await inventoryDb.orders.delete(order.id);
       },
+    );
+    setSelectedOrderIds([]);
+  }
+  function toggleOrderSelection(orderId: string) {
+    setSelectedOrderIds((selected) =>
+      selected.includes(orderId)
+        ? selected.filter((id) => id !== orderId)
+        : [...selected, orderId],
     );
   }
   const setLine = (
@@ -554,10 +602,6 @@ function App() {
         line.productId === productId ? { ...line, [field]: value } : line,
       ),
     );
-  const salesTotal = saleLines.reduce(
-    (sum, line) => sum + line.quantity * line.price,
-    0,
-  );
   const topItem = orderItems.reduce<Record<string, number>>(
     (counts, item) => ({
       ...counts,
@@ -569,6 +613,39 @@ function App() {
     Object.entries(topItem).sort(
       (first, second) => second[1] - first[1],
     )[0]?.[0] ?? "No sales yet";
+  const soldCounts = orderItems.reduce<Record<string, number>>(
+    (counts, item) => ({
+      ...counts,
+      [item.productId]: (counts[item.productId] ?? 0) + item.quantitySold,
+    }),
+    {},
+  );
+  const nextOrderNumber = `SMKG-${String(
+    orders.reduce((highest, order) => {
+      const sequence = Number(order.orderNumber.match(/(\d+)$/)?.[1] ?? 0);
+      return Math.max(highest, sequence);
+    }, 0) + 1,
+  ).padStart(6, "0")}`;
+  const viewingOrderItems = viewingOrder
+    ? orderItems.filter((item) => item.orderId === viewingOrder.id)
+    : [];
+  const viewingOrderUnits = viewingOrderItems.reduce(
+    (sum, item) => sum + item.quantitySold,
+    0,
+  );
+
+  function closeSalesBasket() {
+    if (editingOrder) {
+      setEditingOrder(undefined);
+      setSaleLines([]);
+    }
+    setShowSalesBasket(false);
+  }
+  function discardSalesBasket() {
+    setEditingOrder(undefined);
+    setSaleLines([]);
+    setShowSalesBasket(false);
+  }
   const detailProduct = selectedProduct
     ? products.find((product) => product.id === selectedProduct.id)
     : undefined;
@@ -611,7 +688,14 @@ function App() {
               setTab(item);
               setEditingProduct(undefined);
               setSelectedProduct(undefined);
-                setAddingProductForOrder(false);
+              setAddingProductForOrder(false);
+              setShowSalesBasket(false);
+              if (editingOrder) {
+                setEditingOrder(undefined);
+                setSaleLines([]);
+              }
+              setSelectedOrderIds([]);
+              setViewingOrder(undefined);
             }}
             key={item}
           >
@@ -650,14 +734,33 @@ function App() {
             <div className="panel">
               <h2>Products needing attention</h2>
               {lowStock.length ? (
-                lowStock.map((product) => (
-                  <p key={product.id}>
-                    {product.name}
-                    <span>
-                      {product.quantity} {product.unit}
-                    </span>
-                  </p>
-                ))
+                <div className="attention-table" role="table">
+                  <div className="attention-header" role="row">
+                    <span>Product name</span>
+                    <span>Type</span>
+                    <span>Brand</span>
+                    <span>In stock</span>
+                  </div>
+                  {lowStock.map((product) => (
+                    <button
+                      className="attention-row"
+                      type="button"
+                      onClick={() => openProduct(product)}
+                      key={product.id}
+                    >
+                      <strong>{product.name}</strong>
+                      <span>
+                        {product.measurementValue} {product.unit}
+                      </span>
+                      <span>{product.brand || "Unbranded"}</span>
+                      <span>
+                        {new Intl.NumberFormat("en-IN", {
+                          maximumFractionDigits: 3,
+                        }).format(product.quantity)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               ) : (
                 <p className="muted">No low-stock products.</p>
               )}
@@ -931,7 +1034,12 @@ function App() {
           <section className="inventory-layout">
             <OptionManager
               options={productOptions}
+              requestedType={requestedOptionType}
               onAdd={addOption}
+              onAdded={(type, name) => {
+                setAddedOption({ type, name });
+                setRequestedOptionType(undefined);
+              }}
               onRename={renameOption}
               onDelete={deleteOption}
             />
@@ -953,6 +1061,11 @@ function App() {
                 brands={brands}
                 measurementUnits={measurementUnits}
                 packageTypes={packageTypes}
+                addedOption={addedOption}
+                onRequestOption={(type) => {
+                  setRequestedOptionType(type);
+                  setAddedOption(undefined);
+                }}
                 onSave={saveProduct}
                 onCancel={() => setEditingProduct(undefined)}
               />
@@ -961,6 +1074,85 @@ function App() {
         </section>
       )}
       {tab === "Sales" && (
+        showSalesBasket ? (
+          <SalesBasket
+            products={products}
+            categories={categories}
+            lines={saleLines}
+            orderNumber={editingOrder?.orderNumber ?? nextOrderNumber}
+            isEditing={Boolean(editingOrder)}
+            soldCounts={soldCounts}
+            onAdd={addSaleLine}
+            onChange={setLine}
+            onRemove={(productId) =>
+              setSaleLines((lines) =>
+                lines.filter((line) => line.productId !== productId),
+              )
+            }
+            onAddNewProduct={addProductFromOrder}
+            onCancel={closeSalesBasket}
+            onDiscard={discardSalesBasket}
+            onSubmit={submitSale}
+          />
+        ) : viewingOrder ? (
+          <section className="order-detail-page">
+            <header className="page-heading detail-heading">
+              <div>
+                <button
+                  className="back-button"
+                  onClick={() => setViewingOrder(undefined)}
+                >
+                  <ArrowLeft size={15} /> Back to orders
+                </button>
+                <p className="eyebrow">Order details</p>
+                <h1>{viewingOrder.orderNumber}</h1>
+                <p>{new Date(viewingOrder.soldAt).toLocaleString()}</p>
+              </div>
+              <button
+                className="primary-button"
+                onClick={() => {
+                  setViewingOrder(undefined);
+                  void editOrder(viewingOrder);
+                }}
+              >
+                Edit order
+              </button>
+            </header>
+            <section className="metrics">
+              <div>
+                <span>Products</span>
+                <strong>{viewingOrderItems.length}</strong>
+              </div>
+              <div>
+                <span>Units sold</span>
+                <strong>{viewingOrderUnits}</strong>
+              </div>
+              <div>
+                <span>Order amount</span>
+                <strong>{currency(viewingOrder.totalAmount)}</strong>
+              </div>
+            </section>
+            <section className="panel order-detail-items">
+              <div className="order-detail-header">
+                <span>Product</span>
+                <span>Qty</span>
+                <span>Price</span>
+                <span>Total</span>
+              </div>
+              {viewingOrderItems.map((item) => (
+                <div className="order-detail-row" key={item.id}>
+                  <span>
+                    <strong>{item.productName}</strong>
+                    <small>{item.category}</small>
+                  </span>
+                  <span>{item.quantitySold}</span>
+                  <span>{item.unitSellingPrice.toFixed(2)}</span>
+                  <strong>{item.lineTotal.toFixed(2)}</strong>
+                </div>
+              ))}
+            </section>
+          </section>
+        ) : (
         <section>
           <header className="page-heading">
             <div>
@@ -991,126 +1183,86 @@ function App() {
               <strong className="metric-text">{mostSold}</strong>
             </div>
           </section>
-          <section className="sales-grid">
+          <section className="orders-layout">
             <div className="panel">
-              <h2>
-                {editingOrder
-                  ? `Edit ${editingOrder.orderNumber}`
-                  : "New order"}
-              </h2>
-              <select
-                className="product-picker"
-                defaultValue=""
-                onChange={(event) => {
-                  addSaleLine(event.target.value);
-                  event.target.value = "";
-                }}
-              >
-                <option value="" disabled>
-                  Add a product
-                </option>
-                {products
-                  .filter((product) => product.quantity > 0)
-                  .map((product) => (
-                    <option value={product.id} key={product.id}>
-                      {product.name} ({product.quantity} {product.unit})
-                    </option>
-                  ))}
-              </select>
-              <button
-                className="add-product-link"
-                type="button"
-                onClick={addProductFromOrder}
-              >
-                <Plus size={16} /> Add new product
-              </button>
-              {!products.length && (
-                <p className="order-empty-note">
-                  No products are available yet. Add one to continue this
-                  order.
+              <div className="orders-heading"><div><p className="eyebrow">Order history</p><h2>Recent orders</h2></div><button className="primary-button" onClick={() => setShowSalesBasket(true)}>{saleLines.length ? `Continue order (${saleLines.length})` : "New order"}</button></div>
+              {!selectedOrderIds.length && orders.length > 0 && (
+                <p className="selection-hint">
+                  Tap an order for details · Long press to select
                 </p>
               )}
-              {saleLines.map((line) => {
-                const product = products.find(
-                  (item) => item.id === line.productId,
-                );
-                return (
-                  product && (
-                    <div className="sale-line" key={line.productId}>
-                      <span>{product.name}</span>
-                      <input
-                        min="1"
-                        max={product.quantity + (editingOrder ? 999999 : 0)}
-                        type="number"
-                        value={line.quantity}
-                        onChange={(event) =>
-                          setLine(
-                            line.productId,
-                            "quantity",
-                            Number(event.target.value),
-                          )
-                        }
-                      />
-                      <input
-                        min="0"
-                        step="0.01"
-                        type="number"
-                        value={line.price}
-                        onChange={(event) =>
-                          setLine(
-                            line.productId,
-                            "price",
-                            Number(event.target.value),
-                          )
-                        }
-                      />
-                      <button
-                        onClick={() =>
-                          setSaleLines((lines) =>
-                            lines.filter(
-                              (item) => item.productId !== line.productId,
-                            ),
-                          )
-                        }
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  )
-                );
-              })}
-              <div className="order-total">
-                Order total <strong>{currency(salesTotal)}</strong>
-              </div>
-              <button
-                className="save-button"
-                disabled={!saleLines.length}
-                onClick={submitSale}
-              >
-                <ShoppingCart size={18} />
-                {editingOrder ? "Save order" : "Submit order"}
-              </button>
-            </div>
-            <div className="panel">
-              <h2>Recent orders</h2>
               {orders.length ? (
-                orders.map((order) => (
-                  <p className="order-row" key={order.id}>
-                    <span>
-                      {order.orderNumber}
-                      <small>{new Date(order.soldAt).toLocaleString()}</small>
-                    </span>
-                    <strong>{currency(order.totalAmount)}</strong>
-                    <button onClick={() => editOrder(order)}>Edit</button>
-                    <button onClick={() => deleteOrder(order)}>Delete</button>
-                  </p>
-                ))
+                <div
+                  className={`orders-table ${selectedOrderIds.length ? "selection-mode" : ""}`}
+                >
+                  <div className="orders-table-header">
+                    {selectedOrderIds.length > 0 && (
+                      <input
+                        type="checkbox"
+                        aria-label="Select all orders"
+                        checked={selectedOrderIds.length === orders.length}
+                        onChange={(event) =>
+                          setSelectedOrderIds(
+                            event.target.checked
+                              ? orders.map((order) => order.id)
+                              : [],
+                          )
+                        }
+                      />
+                    )}
+                    <span>Order number</span>
+                    <span>Amount</span>
+                  </div>
+                  {orders.map((order) => (
+                  <OrderRow
+                    key={order.id}
+                    order={order}
+                    selectionMode={selectedOrderIds.length > 0}
+                    selected={selectedOrderIds.includes(order.id)}
+                    onOpen={setViewingOrder}
+                    onSelect={toggleOrderSelection}
+                  />
+                  ))}
+                  {selectedOrderIds.length > 0 && (
+                    <div className="selected-order-actions">
+                      <span>
+                        {selectedOrderIds.length} order
+                        {selectedOrderIds.length === 1 ? "" : "s"} selected
+                      </span>
+                      <div>
+                        {selectedOrderIds.length === 1 && (
+                          <button
+                            className="edit-selected-order"
+                            onClick={() => {
+                              const order = orders.find(
+                                (item) => item.id === selectedOrderIds[0],
+                              );
+                              if (order) {
+                                setSelectedOrderIds([]);
+                                void editOrder(order);
+                              }
+                            }}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        <button
+                          className="delete-selected-orders"
+                          onClick={deleteSelectedOrders}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <p className="muted">Orders will appear here.</p>
               )}
             </div>
           </section>
         </section>
+        )
       )}
     </main>
   );

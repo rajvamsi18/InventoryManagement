@@ -5,9 +5,19 @@ SMKG stands for Sri Mareswari Kinena General Stores.
 ## Daily Flow
 
 1. Use **Inventory** to configure categories, brands, measurements, and package types, then enter stock with a pack size, cost, selling price, and low-stock alert.
-2. Use **Sales** to create each order. Submitting it reduces stock on the same device.
+	Stock quantity and low-stock alert are non-negative whole-unit counts. Decimal weight or volume belongs in Pack size, not Stock quantity.
+	Brand, Category, Package type, and Measurement unit dropdowns include **Add new...**. Selecting it opens and focuses the matching Catalog options section without clearing the product form. After adding the value, SMKG selects it in the original field automatically.
+2. Use **Sales** to open a new basket. Search/filter the product catalog, add products to the basket, adjust quantity or selling price, and submit. Submitting reduces stock on the same device and returns to Recent orders.
+	Sale quantities are positive whole units, so stock remains integer-valued after submissions, edits, deletions, and restorations.
+	The basket heading displays its order number. By default it shows four most-sold quick picks; entering a search or category displays matching products with 12-item pagination.
 	If a product is missing, select **Add new product**. SMKG preserves the draft order, opens Inventory, and returns to Sales after a successful save with the product already added to the order. **Return to order** cancels the detour without losing the draft.
+	Editing a Recent order opens the same basket page with its existing products. Saving reverses the original stock movement and applies the edited basket atomically.
+	**Back to orders** preserves an unfinished new order and shows **Continue order**. **Cancel order** explicitly discards the basket and returns to **New order**. Returning without saving an existing-order edit also discards that edit.
+	Recent orders uses Order number and Amount columns; row amounts omit the repeated `Rs.` prefix.
+	Tap an order to open its detail page with products, quantities, selling prices, line totals, and an Edit order action. Long press an order to enter selection mode and reveal checkboxes. One selected order shows Edit and Delete below the table; multiple selected orders show Delete only. Bulk deletion restores stock from every selected order before removing its history.
 3. Use **Home** to review today's sales, monthly sales, low-stock products, and inventory value.
+	Products needing attention are shown in a table with product name, pack size/measurement, brand, and stock. Selecting a row opens that product's detail page.
+	The attention table and Sales snapshot fit the mobile viewport without horizontal scrolling.
 4. Use **Export** in Inventory regularly and store the JSON file outside the PWA.
 5. Use **Import** on a replacement/reset device to restore a compatible SMKG backup.
 
