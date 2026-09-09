@@ -1,6 +1,18 @@
-import { Pencil, Trash2 } from 'lucide-react'
+import { Eye, Pencil, Trash2 } from 'lucide-react'
 import type { Product } from '../services/database'
-export function ProductList({ products, onDelete, onEdit }: { products: Product[]; onDelete: (product: Product) => void; onEdit?: (product: Product) => void }) {
-  if (!products.length) return <div className="empty-state"><p>No products yet.</p><span>Add your first item using the form.</span></div>
-  return <div className="product-list">{products.map((product) => <article className="product-row" key={product.id}><div><h3>{product.name}</h3><p>{product.category}</p></div><div><strong className={product.quantity <= product.lowStockAt ? 'low-stock' : ''}>{product.quantity} {product.unit}</strong><p>{product.quantity <= product.lowStockAt ? 'Low stock' : 'In stock'}</p></div><div>{product.price === undefined ? '-' : `Rs. ${product.price.toFixed(2)}`}</div><div className="row-actions">{onEdit && <button className="icon-button" onClick={() => onEdit(product)} aria-label={`Edit ${product.name}`}><Pencil size={17} /></button>}<button className="icon-button danger" onClick={() => onDelete(product)} aria-label={`Delete ${product.name}`}><Trash2 size={17} /></button></div></article>)}</div>
+
+type Props = { products: Product[]; onView: (product: Product) => void; onDelete?: (product: Product) => void; onEdit?: (product: Product) => void }
+const sizeLabel = (product: Product) => `${product.measurementValue ?? ''} ${product.unit}`.trim()
+const quantityLabel = (quantity: number) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 3 }).format(quantity)
+
+export function ProductList({ products, onView, onDelete, onEdit }: Props) {
+  if (!products.length) return <div className="empty-state"><p>No matching products.</p><span>Add stock in Inventory or change your search.</span></div>
+  return <div className="product-grid">{products.map((product) => <article className="product-card" key={product.id}>
+    <button className="product-card-main" type="button" onClick={() => onView(product)}>
+      {product.imageDataUrl ? <img className="product-image" src={product.imageDataUrl} alt="" /> : <span className="product-monogram">{(product.brand || product.name).slice(0, 2).toUpperCase()}</span>}
+      <span className="product-copy"><small>{product.brand || 'Unbranded'} · {product.category}</small><strong>{product.name}</strong><span>{sizeLabel(product)} · {product.packageType || 'Item'}</span></span>
+      <span className="product-price"><small>MRP</small><strong>{product.sellingPrice === undefined ? 'Not set' : `Rs. ${product.sellingPrice.toFixed(2)}`}</strong></span>
+    </button>
+    <footer><span className={product.quantity <= product.lowStockAt ? 'stock-badge low' : 'stock-badge'}>{quantityLabel(product.quantity)} in stock</span><div className="row-actions"><button onClick={() => onView(product)} aria-label={`View ${product.name}`}><Eye size={16} /></button>{onEdit && <button onClick={() => onEdit(product)} aria-label={`Edit ${product.name}`}><Pencil size={16} /></button>}{onDelete && <button className="danger" onClick={() => onDelete(product)} aria-label={`Delete ${product.name}`}><Trash2 size={16} /></button>}</div></footer>
+  </article>)}</div>
 }

@@ -1,6 +1,6 @@
 # SMKG Checkpoint
 
-**Updated:** 2026-09-05
+**Updated:** 2026-09-09
 **Application:** SMKG - Sri Mareswari Kinena General Stores
 **Current phase:** Offline-first frontend MVP
 
@@ -17,6 +17,22 @@
 - Added order deletion that restores inventory quantities.
 - Added submitted order editing; saving an edit reverses the prior stock movement and applies the replacement atomically.
 - Added user-managed product categories and standard/manual measurement units and package types.
+- Added owner-managed brands and converted all product option types to add/rename/delete controls.
+- Added product pack size (`measurementValue`) so variants such as 500 grams and 1 kilogram can be distinguished.
+- Moved inventory searching to the Products catalog and removed the growing product list from Inventory.
+- Added multi-field catalog search, 12-item pagination, richer product cards, and product stock/sales/order details.
+- Upgraded JSON backups to include owner-managed catalog options while preserving v1 import compatibility.
+- Added product batch number, expiry date, supplier, GST percentage, and local image fields.
+- Added bidirectional unit-cost/margin/MRP calculations.
+- Added cost snapshots to order items and realized product profit reporting.
+- Added sequential persisted order numbers (`SMKG-000001` onward) and backup v3 restoration of orders/order items.
+- Expanded catalog search to MRP and combined pack size/measurement unit.
+- Added product matching using name, brand, category, pack size/unit, package type, expiry, unit cost, and MRP; matches update stock/GST rather than creating another card.
+- Added supplier-batch stock lots so one catalog product can retain multiple supplier/batch pairs.
+- Protected products with sales history from deletion and separated unit cost/profit margin detail tiles.
+- Rounded displayed stock quantities to avoid floating-point artifacts such as `6.949999999999999`.
+- Collapsed Catalog option values until a section is selected and added product images to individual detail views.
+- Added an Add new product flow from Sales that preserves the draft order, returns automatically after save, and adds the new/matched product as an order line.
 - Added local Home and Sales dashboards.
 - Fixed tab navigation to reset scroll position; Inventory no longer autofocuses its form on mobile and jump-scrolls to the middle of the page.
 - Created docs folders: `docs/frontend`, `docs/backend`, `docs/dbSetup`, and `docs/application`.
@@ -35,14 +51,15 @@ The production build passes and generates the PWA service worker.
 - `products`
 - `orders`
 - `orderItems`
+- `productOptions`
 
 All records use UUID identifiers and ISO timestamps to support a later FastAPI/PostgreSQL sync.
 
 ## Next Work
 
-1. Add product detail view and archive behavior for products with historical sales.
-2. Add focused automated tests using Vitest and fake-indexeddb for stock, category, and order business rules.
-3. Add focused automated tests using Vitest and fake-indexeddb for stock/order business rules.
+1. Replace hard deletion with product archiving when a product has sales history.
+2. Add focused automated tests using Vitest and fake-indexeddb for stock, options, pagination, and order rules.
+3. Consider barcode/SKU, expiry date, supplier, tax, and product image fields after real store testing establishes which are needed.
 4. Set up PostgreSQL on the personal laptop using `docs/dbSetup/README.md`.
 5. Build FastAPI, PostgreSQL models, sync API, and secure HTTPS/private-network connectivity.
 

@@ -8,19 +8,19 @@ The `frontend/` folder contains the installable, offline-first React PWA for SMK
 
 The app uses the browser's IndexedDB via Dexie. It creates a `grocery-inventory` database on the device. Version 2 contains:
 
-- `products`: stock, category, measurement unit, package type, cost, optional profit margin, suggested selling price, and timestamps.
+- `products`: stock, brand, category, pack size, measurement unit, package type, supplier-batch stock lots, expiry, GST, image, cost, margin, selling price, and timestamps.
 - `orders`: submitted sales orders.
-- `orderItems`: the products and prices sold in each order.
-- `categories`: user-created product categories.
+- `orderItems`: products, selling prices, and cost snapshots used for realized-profit reporting.
+- `productOptions`: owner-managed categories, brands, measurement units, and package types.
 
 Data persists across refreshes and offline use, but site-data clearing can remove it. The app includes JSON backup export/import. A backend sync will provide an additional Postgres backup later.
 
 ## Views
 
 - **Home**: products, sales today/month, units sold today, low-stock products, and sales snapshot.
-- **Products**: searchable product catalog. Edit opens the Inventory tab.
-- **Inventory**: add, edit, delete, search, filter, import, and export inventory. Categories can be added, renamed, and removed when unused. Measurements and package types have standard choices plus a manual option.
-- **Sales**: create and edit orders, use suggested selling prices, adjust quantity/price, submit a sale, see recent orders, and delete an order to restore stock.
+- **Products**: searchable catalog with 12 products per page. Search covers product name, brand, MRP, combined pack size/unit, category, measurement unit, and package type. Selecting a product opens stock, pricing, profit, sales, and order history details.
+- **Inventory**: add and edit stock, manage catalog options, and import/export backups. Product search redirects to Products so the stock-entry screen stays focused. Categories, brands, measurements, and package types can be added, renamed, and removed when unused.
+- **Sales**: create and edit orders, use suggested selling prices, adjust quantity/price, submit a sale, see recent orders, and delete an order to restore stock. Missing products can be created through Inventory without losing the current draft order.
 
 ## Run and Test
 

@@ -1,10 +1,13 @@
-import { type Product } from './database'
+import { inventoryDb, type Product, type ProductOption, type SalesOrder, type SalesOrderItem } from './database'
 
 type InventoryBackup = {
   format: 'stockroom-inventory-backup'
-  version: 1
+  version: 3
   exportedAt: string
   products: Product[]
+  productOptions: ProductOption[]
+  orders: SalesOrder[]
+  orderItems: SalesOrderItem[]
 }
 
 function isProduct(value: unknown): value is Product {
@@ -22,12 +25,36 @@ function isProduct(value: unknown): value is Product {
     && typeof product.updatedAt === 'string'
 }
 
-export function downloadBackup(products: Product[]) {
+function isProductOption(value: unknown): value is ProductOption {
+  if (!value || typeof value !== 'object') return false
+  const option = value as Record<string, unknown>
+  return typeof option.id === 'string' && ['category', 'brand', 'measurementUnit', 'packageType'].includes(String(option.type)) && typeof option.name === 'string' && typeof option.createdAt === 'string'
+}
+
+function isOrder(value: unknown): value is SalesOrder {
+  if (!value || typeof value !== 'object') return false
+  const order = value as Record<string, unknown>
+  return typeof order.id === 'string' && typeof order.orderNumber === 'string' && typeof order.soldAt === 'string' && typeof order.totalAmount === 'number'
+}
+
+function isOrderItem(value: unknown): value is SalesOrderItem {
+  if (!value || typeof value !== 'object') return false
+  const item = value as Record<string, unknown>
+  return typeof item.id === 'string' && typeof item.orderId === 'string' && typeof item.productId === 'string' && typeof item.quantitySold === 'number' && typeof item.lineTotal === 'number'
+}
+
+export async function downloadBackup(products: Product[], suppliedOptions?: ProductOption[]) {
+  const productOptions = suppliedOptions ?? await inventoryDb.productOptions.toArray()
+  const orders = await inventoryDb.orders.toArray()
+  const orderItems = await inventoryDb.orderItems.toArray()
   const backup: InventoryBackup = {
     format: 'stockroom-inventory-backup',
-    version: 1,
+    version: 3,
     exportedAt: new Date().toISOString(),
     products,
+    productOptions,
+    orders,
+    orderItems,
   }
   const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }))
   const link = document.createElement('a')
@@ -37,12 +64,14 @@ export function downloadBackup(products: Product[]) {
   URL.revokeObjectURL(url)
 }
 
-export async function readBackup(file: File): Promise<Product[]> {
+export async function readBackup(file: File): Promise<{ products: Product[]; productOptions: ProductOption[]; orders: SalesOrder[]; orderItems: SalesOrderItem[] }> {
   const parsed: unknown = JSON.parse(await file.text())
   if (!parsed || typeof parsed !== 'object') throw new Error('This is not a Stockroom backup file.')
-  const backup = parsed as Partial<InventoryBackup>
-  if (backup.format !== 'stockroom-inventory-backup' || backup.version !== 1 || !Array.isArray(backup.products) || !backup.products.every(isProduct)) {
+  const backup = parsed as Partial<InventoryBackup> & { version?: number }
+  if (backup.format !== 'stockroom-inventory-backup' || ![1, 2, 3].includes(backup.version ?? 0) || !Array.isArray(backup.products) || !backup.products.every(isProduct)) {
     throw new Error('This backup file is invalid or uses an unsupported version.')
   }
-  return backup.products
+  if ((backup.version ?? 0) >= 2 && (!Array.isArray(backup.productOptions) || !backup.productOptions.every(isProductOption))) throw new Error('This backup contains invalid catalog options.')
+  if (backup.version === 3 && (!Array.isArray(backup.orders) || !backup.orders.every(isOrder) || !Array.isArray(backup.orderItems) || !backup.orderItems.every(isOrderItem))) throw new Error('This backup contains invalid order history.')
+  return { products: backup.products, productOptions: (backup.version ?? 0) >= 2 ? backup.productOptions ?? [] : [], orders: backup.version === 3 ? backup.orders ?? [] : [], orderItems: backup.version === 3 ? backup.orderItems ?? [] : [] }
 }
