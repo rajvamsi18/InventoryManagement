@@ -1,0 +1,10 @@
+name = "smkg-stt-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[vars]
+# The GitHub Pages origin that is allowed to call this proxy. Update to your real Pages URL.
+ALLOWED_ORIGIN = "https://rajvamsi18.github.io"
+
+# Set the real secret (never commit it) with:
+#   wrangler secret put SARVAM_API_KEY

@@ -2,7 +2,15 @@
 
 The FastAPI backend is not implemented yet. The frontend intentionally remains usable without it.
 
+## Speech-to-Text Proxy (implemented)
+
+`worker/` holds a small Cloudflare Worker that proxies recorded audio to the Sarvam
+AI speech-to-text API so the frontend's optional Sarvam voice engine never needs to
+embed the Sarvam API key in the browser bundle. It is stateless and unrelated to the
+FastAPI sync backend below — see `worker/README.md` for setup and deployment.
+
 ## Next Backend Scope
+
 
 - FastAPI application and configuration.
 - PostgreSQL connection using a local `.env` file.

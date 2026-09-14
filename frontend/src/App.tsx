@@ -13,6 +13,7 @@ import { OrderRow } from "./components/OrderRow";
 import { ProductForm } from "./components/ProductForm";
 import { ProductList } from "./components/ProductList";
 import { SalesBasket, type BasketLine } from "./components/SalesBasket";
+import type { VoiceProductPrefill } from "./components/VoiceOrderAssistant";
 import { downloadBackup, readBackup } from "./services/backup";
 import {
   inventoryDb,
@@ -39,6 +40,7 @@ function App() {
   const [saleLines, setSaleLines] = useState<BasketLine[]>([]);
   const [showSalesBasket, setShowSalesBasket] = useState(false);
   const [addingProductForOrder, setAddingProductForOrder] = useState(false);
+  const [newProductPrefill, setNewProductPrefill] = useState<VoiceProductPrefill>();
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [viewingOrder, setViewingOrder] = useState<SalesOrder>();
   const [requestedOptionType, setRequestedOptionType] =
@@ -228,6 +230,7 @@ function App() {
               ],
         );
         setAddingProductForOrder(false);
+        setNewProductPrefill(undefined);
         setTab("Sales");
         setShowSalesBasket(true);
       }
@@ -270,14 +273,16 @@ function App() {
           },
         ]);
         setAddingProductForOrder(false);
+        setNewProductPrefill(undefined);
         setTab("Sales");
       }
     }
     return true;
   }
 
-  function addProductFromOrder() {
+  function addProductFromOrder(prefill?: VoiceProductPrefill) {
     setEditingProduct(undefined);
+    setNewProductPrefill(prefill);
     setAddingProductForOrder(true);
     setShowSalesBasket(true);
     setTab("Inventory");
@@ -285,6 +290,7 @@ function App() {
 
   function returnToOrder() {
     setAddingProductForOrder(false);
+    setNewProductPrefill(undefined);
     setTab("Sales");
     setShowSalesBasket(true);
   }
@@ -406,17 +412,26 @@ function App() {
       event.target.value = "";
     }
   }
-  function addSaleLine(productId: string) {
+  function addSaleLine(productId: string, quantity = 1) {
     const product = products.find((item) => item.id === productId);
-    if (product && !saleLines.some((line) => line.productId === productId))
-      setSaleLines([
-        ...saleLines,
-        {
-          productId,
-          quantity: 1,
-          price: product.sellingPrice ?? product.price ?? 0,
-        },
-      ]);
+    if (!product) return;
+    const wholeQuantity = Math.max(1, Math.trunc(quantity));
+    setSaleLines((lines) =>
+      lines.some((line) => line.productId === productId)
+        ? lines.map((line) =>
+            line.productId === productId
+              ? { ...line, quantity: wholeQuantity }
+              : line,
+          )
+        : [
+            ...lines,
+            {
+              productId,
+              quantity: wholeQuantity,
+              price: product.sellingPrice ?? product.price ?? 0,
+            },
+          ],
+    );
   }
   async function submitSale() {
     if (!saleLines.length) return;
@@ -689,6 +704,7 @@ function App() {
               setEditingProduct(undefined);
               setSelectedProduct(undefined);
               setAddingProductForOrder(false);
+              setNewProductPrefill(undefined);
               setShowSalesBasket(false);
               if (editingOrder) {
                 setEditingOrder(undefined);
@@ -1062,6 +1078,7 @@ function App() {
                 measurementUnits={measurementUnits}
                 packageTypes={packageTypes}
                 addedOption={addedOption}
+                initialValues={newProductPrefill}
                 onRequestOption={(type) => {
                   setRequestedOptionType(type);
                   setAddedOption(undefined);

@@ -24,6 +24,8 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
+        env:
+          VITE_SARVAM_PROXY_URL: ${{ vars.VITE_SARVAM_PROXY_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

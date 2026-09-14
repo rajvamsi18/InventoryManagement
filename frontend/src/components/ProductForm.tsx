@@ -1,17 +1,31 @@
 import { useEffect, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import type { Product, ProductOptionType } from '../services/database'
+import type { VoiceProductPrefill } from './VoiceOrderAssistant'
 
 type ProductValues = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>
-type Props = { product?: Product; categories: string[]; brands: string[]; measurementUnits: string[]; packageTypes: string[]; addedOption?: { type: ProductOptionType; name: string }; onRequestOption: (type: ProductOptionType) => void; onSave: (value: ProductValues) => Promise<boolean>; onCancel?: () => void }
+type Props = { product?: Product; categories: string[]; brands: string[]; measurementUnits: string[]; packageTypes: string[]; addedOption?: { type: ProductOptionType; name: string }; initialValues?: VoiceProductPrefill; onRequestOption: (type: ProductOptionType) => void; onSave: (value: ProductValues) => Promise<boolean>; onCancel?: () => void }
 const blank = (categories: string[], brands: string[], units: string[], packages: string[]): ProductValues => ({ name: '', brand: brands[0] ?? '', category: categories[0] ?? '', quantity: 1, unit: units[0] ?? '', measurementValue: 1, packageType: packages[0] ?? '', batchNumber: '', expiryDate: '', supplier: '', taxPercent: undefined, imageDataUrl: '', price: undefined, profitMarginPercent: undefined, sellingPrice: undefined, lowStockAt: 3 })
 
-export function ProductForm({ product, categories, brands, measurementUnits, packageTypes, addedOption, onRequestOption, onSave, onCancel }: Props) {
+export function ProductForm({ product, categories, brands, measurementUnits, packageTypes, addedOption, initialValues, onRequestOption, onSave, onCancel }: Props) {
   const [values, setValues] = useState<ProductValues>(product ?? blank(categories, brands, measurementUnits, packageTypes))
   const [isSaving, setIsSaving] = useState(false)
   useEffect(() => { if (product) setValues(product) }, [product])
   useEffect(() => { if (!product) setValues((current) => ({ ...current, brand: current.brand || brands[0] || '', category: current.category || categories[0] || '', unit: current.unit || measurementUnits[0] || '', packageType: current.packageType || packageTypes[0] || '' })) }, [product, categories, brands, measurementUnits, packageTypes])
   useEffect(() => { if (!addedOption) return; const field = addedOption.type === 'brand' ? 'brand' : addedOption.type === 'category' ? 'category' : addedOption.type === 'measurementUnit' ? 'unit' : 'packageType'; setValues((current) => ({ ...current, [field]: addedOption.name })) }, [addedOption])
+  useEffect(() => {
+    if (product || !initialValues) return
+    setValues((current) => ({
+      ...current,
+      name: current.name || initialValues.name,
+      measurementValue: initialValues.measurementValue ?? current.measurementValue,
+      unit: initialValues.unit || current.unit,
+      packageType: initialValues.packageType || current.packageType,
+      price: initialValues.price ?? current.price,
+      profitMarginPercent: initialValues.profitMarginPercent ?? current.profitMarginPercent,
+      sellingPrice: initialValues.sellingPrice ?? current.sellingPrice,
+    }))
+  }, [product, initialValues])
   const update = <K extends keyof ProductValues>(key: K, value: ProductValues[K]) => setValues((current) => ({ ...current, [key]: value }))
   function updateCost(cost: string) { const price = cost ? Number(cost) : undefined; setValues((current) => { const sellingPrice = price !== undefined && current.profitMarginPercent !== undefined ? Number((price * (1 + current.profitMarginPercent / 100)).toFixed(2)) : current.sellingPrice; return { ...current, price, sellingPrice } }) }
   function updateMargin(margin: string) { const profitMarginPercent = margin ? Number(margin) : undefined; setValues((current) => { const sellingPrice = current.price !== undefined && profitMarginPercent !== undefined ? Number((current.price * (1 + profitMarginPercent / 100)).toFixed(2)) : current.sellingPrice; return { ...current, profitMarginPercent, sellingPrice } }) }
