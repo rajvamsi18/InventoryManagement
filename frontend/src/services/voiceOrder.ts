@@ -54,9 +54,12 @@ export type ParsedSpokenOrder = ParsedVoiceQuery & {
 // profit margin, and selling price phrases before parsing the remaining quantity and name.
 export function parseSpokenOrder(rawText: string): ParsedSpokenOrder {
   let text = ` ${rawText.trim().toLowerCase()} `
+  // Some STT engines (e.g. iOS dictation) leave small quantities as words ("four kgs") instead of
+  // digits, which the measurement/quantity regexes below can't match — normalize them up front.
+  text = ` ${text.split(/\s+/).map((word) => (numberWords[word] !== undefined ? String(numberWords[word]) : word)).join(' ')} `
 
-  // STT output often inserts a currency word ("rs"/"rupees") between "of/is" and the number.
-  const currencyGap = '(?:of|is)?\\s*(?:rs\\.?|rupees|inr)?\\s*'
+  // STT output often inserts a currency word/symbol ("rs"/"rupees"/"\u20b9") between "of/is" and the number.
+  const currencyGap = '(?:of|is)?\\s*(?:rs\\.?|rupees|inr|\\u20b9)?\\s*'
 
   let unitCost: number | undefined
   const unitCostMatch = text.match(new RegExp(`(?:unit\\s*(?:cost|price)|cost\\s*price|purchase\\s*price)\\s*${currencyGap}(\\d+(?:\\.\\d+)?)`))
@@ -88,6 +91,9 @@ export function parseSpokenOrder(rawText: string): ParsedSpokenOrder {
   if (sellingPrice === undefined && unitCost !== undefined && profitMarginPercent !== undefined) {
     sellingPrice = Number((unitCost * (1 + profitMarginPercent / 100)).toFixed(2))
   }
+
+  // Strip any stray currency symbol left behind (e.g. an amount phrase the regexes above didn't match).
+  text = text.replace(/\u20b9/g, ' ')
 
   return { ...parseVoiceQuery(text), measurementValue, unitHint, packageTypeHint, unitCost, profitMarginPercent, sellingPrice }
 }

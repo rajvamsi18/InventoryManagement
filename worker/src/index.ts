@@ -22,10 +22,12 @@ export default {
     const incoming = await request.formData()
     const file = incoming.get('file')
     const languageCode = incoming.get('language_code') ?? 'en-IN'
-    if (!(file instanceof Blob)) return new Response('Missing audio file', { status: 400, headers: corsHeaders(env) })
+    if (!(file instanceof File)) return new Response('Missing audio file', { status: 400, headers: corsHeaders(env) })
 
     const outgoing = new FormData()
-    outgoing.append('file', file, 'speech.webm')
+    // Preserve the browser's actual filename/extension (Safari records mp4, Chrome records webm) —
+    // Sarvam infers the codec from the extension, so a mismatched hardcoded name causes a 400.
+    outgoing.append('file', file, file.name || 'speech.webm')
     outgoing.append('model', 'saaras:v3')
     outgoing.append('language_code', String(languageCode))
 
