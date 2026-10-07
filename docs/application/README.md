@@ -4,8 +4,8 @@ SMKG stands for Sri Mareswari Kirana & General Stores.
 
 ## Daily Flow
 
-1. Use **Inventory** to configure categories, brands, measurements, and package types, then enter stock with a pack size, cost, selling price, and low-stock alert.
-	Stock quantity and low-stock alert are non-negative whole-unit counts. Decimal weight or volume belongs in Pack size, not Stock quantity.
+1. Use **Inventory** to configure categories, brands, measurements, and package types, then enter stock with Volume, cost, selling price, and low-stock alert.
+	Stock quantity and low-stock alert are non-negative whole-unit counts. Decimal weight or volume belongs in Volume (previously Pack size), not Stock quantity. Inventory's Volume remains numeric with a separate Measurement unit dropdown.
 	Brand, Category, Package type, and Measurement unit dropdowns include **Add new...**. Selecting it opens and focuses the matching Catalog options section without clearing the product form. After adding the value, SMKG selects it in the original field automatically.
 2. Use **Sales** to open a new basket. Search/filter the product catalog, add products to the basket, adjust quantity or selling price, and submit. Submitting reduces stock on the same device and opens the saved order details.
 	Sale quantities are positive whole units, so stock remains integer-valued after submissions, edits, deletions, and restorations.   A **Voice add** button in the basket lets the owner speak a product, quantity, pack size, unit cost, profit margin, and selling price in one sentence (e.g. "rice 2 kg unit cost 67 profit margin 20 percent"). Tap the button again to finish speaking — it keeps listening across pauses instead of cutting off. SMKG shows what it heard, ranks matching products, and lists every detected field under "Detected for new product" so the owner can review before confirming — it never adds a sale or product automatically. If no product matches, **Add as new product** opens Inventory with all detected fields prefilled, without losing the basket in progress. English and Telugu are supported via a language toggle. A second **Browser/Sarvam** toggle picks the speech engine: Browser is the free built-in engine (Android Chrome; not reliably on iPhone Safari); Sarvam records audio and sends it to a small server-side proxy for higher-accuracy transcription (small per-use cost, works on more devices including iPhone Safari, needs the shop's Sarvam proxy to be set up first). Both require an internet connection, unlike the rest of the app. Note: third-party dictation tools like Wispr Flow are not integrated into SMKG — they work independently at the phone/OS level, so an owner who has one installed can already dictate directly into any text field (like the transcript box) without any toggle here.	The basket heading displays its order number. By default it shows four most-sold quick picks; entering a search or category displays matching products with 12-item pagination.
@@ -19,6 +19,18 @@ SMKG stands for Sri Mareswari Kirana & General Stores.
 	The attention table and Sales snapshot fit the mobile viewport without horizontal scrolling.
 4. Use **Export** in Inventory regularly and store the JSON file outside the PWA.
 5. Use **Import** on a replacement/reset device to restore a compatible SMKG backup.
+
+## Order Modes
+
+Volume is optional in Only Order: leave it blank to save an order and generate receipts with just the product name. Inventory's numeric Volume and Measurement unit requirements are unchanged.
+
+In **Sales**, the **Order History** tile shows **From Inventory** and **Only Order** selectors above **Recent Orders**. Select a flow to display only its saved orders. **New order** opens that flow directly, without a popup. From Inventory retains the existing catalog/basket, stock movements, product creation shortcuts, inventory-linked order history, Home metrics, and receipts. **Continue order** resumes an existing inventory draft.
+
+**Only Order** opens a separate order page. Product and Volume are free-text fields (letters and numbers, such as `Rice 123` and `200 Grams`). Quantity must be a positive whole number. Price and Total accept non-negative numbers; editing Price or Quantity calculates Total, and editing Total calculates Price using Quantity. Line totals and the order total are rounded to two decimal places; total-derived unit prices retain precision internally. Add/remove rows, submit, open saved orders, edit, delete with confirmation, and create/download/share receipts from this page.
+
+Only Order records use `Order - 1`, `Order - 2`, and so on, without zero padding, and embed all product information directly in the order. Older padded numbers display in this same format in history, details, and receipts. They never create catalog products, alter stock, appear in the inventory-order list, or affect Home/product sales statistics. Switch back using **From Inventory** in the Order History tile. Unsaved Only Order edits can be cancelled with confirmation; they are not persistent drafts.
+
+Backup version 4 includes both order flows. Import accepts versions 1-4; older backups contain no Only Order records. Receipts for Only Order use the Volume text exactly as entered.
 
 ## Order Receipts
 
@@ -52,7 +64,7 @@ New local orders use sequential numbers such as `SMKG-000001`. The next number i
 
 - The application is local-first and works without an API.
 - Data is kept in browser IndexedDB, not a user-visible SQLite file.
-- Editing or deleting an order restores the prior stock movement, then applies the replacement order when saved.
+- Editing or deleting an inventory-linked order restores the prior stock movement, then applies the replacement order when saved. Only Order edits/deletions do not touch stock.
 - Custom categories can be renamed; they can only be removed after their products are moved to another category.
 - The same add/rename/delete rule applies to brands, measurement units, and package types.
 - A product variant is matched by normalized name, brand, category, pack size, measurement unit, package type, expiry date, unit cost, and MRP. A match updates stock and GST instead of creating another catalog card.
@@ -61,4 +73,4 @@ New local orders use sequential numbers such as `SMKG-000001`. The next number i
 - Products with sales history cannot be deleted because doing so would orphan order reporting.
 - The Products catalog shows at most 12 items per page and opens a full product performance view.
 - Product deletion is currently allowed even if it has historical sales. The next product-management enhancement should change this to archive behavior to preserve reporting integrity.
-- Backup version 3 contains products, catalog options, orders, and order items. Older product-only backups remain importable.
+- Backup version 4 contains products, catalog options, inventory orders/items, and independent Only Order records. Versions 1-3 remain importable.

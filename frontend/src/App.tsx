@@ -10,6 +10,7 @@ import {
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { OptionManager } from "./components/OptionManager";
 import { OrderRow } from "./components/OrderRow";
+import { OrderHistoryHeader } from "./components/OrderHistoryHeader";
 import { ProductForm } from "./components/ProductForm";
 import { ProductList } from "./components/ProductList";
 import { SalesBasket, type BasketLine } from "./components/SalesBasket";
@@ -27,6 +28,7 @@ import "./App.css";
 type Tab = "Home" | "Products" | "Inventory" | "Sales";
 const currency = (amount: number) => `Rs. ${amount.toFixed(2)}`;
 const OrderReceipt = lazy(() => import("./components/OrderReceipt").then(module => ({ default: module.OrderReceipt })));
+const OnlyOrdersPage = lazy(() => import("./components/OnlyOrdersPage").then(module => ({ default: module.OnlyOrdersPage })));
 
 function App() {
   const [tab, setTab] = useState<Tab>("Home");
@@ -44,6 +46,7 @@ function App() {
   const [newProductPrefill, setNewProductPrefill] = useState<VoiceProductPrefill>();
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [viewingOrder, setViewingOrder] = useState<SalesOrder>();
+  const [salesMode, setSalesMode] = useState<'inventory' | 'only'>('inventory');
   const [requestedOptionType, setRequestedOptionType] =
     useState<ProductOptionType>();
   const [addedOption, setAddedOption] = useState<{
@@ -56,6 +59,7 @@ function App() {
       () => inventoryDb.products.orderBy("updatedAt").reverse().toArray(),
       [],
     ) ?? [];
+
   const orders =
     useLiveQuery(
       () => inventoryDb.orders.orderBy("soldAt").reverse().toArray(),
@@ -397,14 +401,16 @@ function App() {
         inventoryDb.productOptions,
         inventoryDb.orders,
         inventoryDb.orderItems,
+        inventoryDb.onlyOrders,
         async () => {
           await inventoryDb.products.bulkPut(imported.products);
           await inventoryDb.productOptions.bulkPut(imported.productOptions);
           await inventoryDb.orders.bulkPut(imported.orders);
           await inventoryDb.orderItems.bulkPut(imported.orderItems);
+          await inventoryDb.onlyOrders.bulkPut(imported.onlyOrders);
         },
       );
-      setBackupStatus(`Imported ${imported.products.length} products.`);
+      setBackupStatus(`Imported ${imported.products.length} products and ${imported.onlyOrders.length} Only Order records.`);
     } catch (error) {
       setBackupStatus(
         error instanceof Error ? error.message : "Could not import backup.",
@@ -705,6 +711,7 @@ function App() {
             className={tab === item ? "active" : ""}
             onClick={() => {
               setTab(item);
+              setSalesMode('inventory');
               setEditingProduct(undefined);
               setSelectedProduct(undefined);
               setAddingProductForOrder(false);
@@ -1095,7 +1102,11 @@ function App() {
         </section>
       )}
       {tab === "Sales" && (
-        showSalesBasket ? (
+        salesMode === 'only' ? (
+          <Suspense fallback={<p role="status">Loading orders...</p>}>
+            <OnlyOrdersPage onBack={() => setSalesMode('inventory')} />
+          </Suspense>
+        ) : showSalesBasket ? (
           <SalesBasket
             products={products}
             categories={categories}
@@ -1212,7 +1223,7 @@ function App() {
           </section>
           <section className="orders-layout">
             <div className="panel">
-              <div className="orders-heading"><div><p className="eyebrow">Order history</p><h2>Recent orders</h2></div><button className="primary-button" onClick={() => setShowSalesBasket(true)}>{saleLines.length ? `Continue order (${saleLines.length})` : "New order"}</button></div>
+              <OrderHistoryHeader mode="inventory" onSelectMode={mode => { setSalesMode(mode); setSelectedOrderIds([]); }} onNewOrder={() => setShowSalesBasket(true)} newOrderLabel={saleLines.length ? `Continue order (${saleLines.length})` : "New order"} />
               {!selectedOrderIds.length && orders.length > 0 && (
                 <p className="selection-hint">
                   Tap an order for details · Long press to select

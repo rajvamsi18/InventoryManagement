@@ -73,12 +73,24 @@ export type SalesOrderItem = {
   productName: string
   measurementValue?: number
   unit?: string
+  volume?: string
   category: ProductCategory
   quantitySold: number
   unitCost?: number
   unitSellingPrice: number
   lineTotal: number
 }
+
+export type OnlyOrderLine = {
+  id: string
+  productName: string
+  volume: string
+  quantity: number
+  price: number
+  total: number
+}
+
+export type OnlyOrder = SalesOrder & { items: OnlyOrderLine[] }
 
 export type ProductCategoryOption = {
   id: string
@@ -99,6 +111,7 @@ const inventoryDb = new Dexie('grocery-inventory') as Dexie & {
   products: EntityTable<Product, 'id'>
   orders: EntityTable<SalesOrder, 'id'>
   orderItems: EntityTable<SalesOrderItem, 'id'>
+  onlyOrders: EntityTable<OnlyOrder, 'id'>
   categories: EntityTable<ProductCategoryOption, 'id'>
   productOptions: EntityTable<ProductOption, 'id'>
 }
@@ -194,6 +207,15 @@ inventoryDb.version(8).stores({
       quantity: Math.max(0, Math.round(lot.quantity)),
     })),
   })))
+})
+
+inventoryDb.version(9).stores({
+  products: 'id, name, brand, category, unit, packageType, updatedAt',
+  orders: 'id, orderNumber, soldAt, updatedAt',
+  orderItems: 'id, orderId, productId, productName, category',
+  categories: 'id, name',
+  productOptions: 'id, type, &[type+name]',
+  onlyOrders: 'id, orderNumber, soldAt, updatedAt',
 })
 
 inventoryDb.on('populate', (transaction) => transaction.table('productOptions').bulkAdd(defaultProductOptions(new Date().toISOString())))

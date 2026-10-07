@@ -208,7 +208,7 @@ export function VoiceOrderAssistant({ products, onConfirm, onAddNewProduct }: Pr
               <span>Detected for new product</span>
               <dl>
                 <div><dt>Name</dt><dd>{parsedDetails.nameQuery || '—'}</dd></div>
-                <div><dt>Pack size</dt><dd>{parsedDetails.measurementValue !== undefined ? `${parsedDetails.measurementValue} ${parsedDetails.unitHint ?? ''}` : '—'}</dd></div>
+                <div><dt>Volume</dt><dd>{parsedDetails.measurementValue !== undefined ? `${parsedDetails.measurementValue} ${parsedDetails.unitHint ?? ''}` : '—'}</dd></div>
                 <div><dt>Package type</dt><dd>{parsedDetails.packageTypeHint ?? '—'}</dd></div>
                 <div><dt>Unit cost</dt><dd>{parsedDetails.unitCost !== undefined ? currency(parsedDetails.unitCost) : '—'}</dd></div>
                 <div><dt>Profit margin</dt><dd>{parsedDetails.profitMarginPercent !== undefined ? `${parsedDetails.profitMarginPercent}%` : '—'}</dd></div>

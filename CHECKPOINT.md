@@ -6,6 +6,12 @@
 
 ## Completed
 
+- Made Volume optional in Only Order creation/editing and backup validation. Blank-volume receipts show just the product name. Inventory Volume requirements are unchanged; regression tests cover blank-volume saving and backup compatibility.
+
+- Replaced the New order mode popup with shared From Inventory/Only Order selectors within Order History, above Recent Orders. Lists retain the standard order-number/amount layout; New order starts the selected flow directly. Only Order labels now use `Order - N` without zero padding, including legacy record display and receipts; inventory numbering is unchanged. Verified routing and filtering in the browser and desktop/mobile layouts.
+
+- Added a New order modal with From Inventory and Only Order. From Inventory preserves the catalog/basket and stock-linked order workflow. Only Order has a separate lazy-loaded page and IndexedDB v9 `onlyOrders` table, embedded free-text Product/Volume lines, positive whole quantities, bidirectional Price/Total calculations, standalone numbering, editing/deletion, and shared PDF receipts. It never mutates inventory tables or contributes to Home/catalog metrics. Backup v4 includes both flows and still imports v1-v3. Renamed visible product/voice-review Pack size labels to Volume. Verified calculations, inventory isolation, CRUD, receipt sharing payload, backup compatibility, chooser routing, and desktop/mobile layouts; runtime dependency audit is clean. Sarvam remains deferred.
+
 - Receipt previews and PDFs now include pack size and measurement unit beside each product name. New sales snapshot these values, order edits retain available snapshots, and legacy receipts fall back to linked inventory details. All four receipt regression tests and the production build pass.
 
 - Added order receipt previews and paginated A5 PDFs with store address/contact, order number/date (India time), saved product names, quantities, selling prices, line totals, and total. Internal costs/margins are excluded; receipts do not confirm payment. Successful submissions open saved order details; existing orders also offer Receipt, Download PDF, and Share PDF. Optional customer name is receipt-only. Web Share opens the OS share sheet for WhatsApp selection, with download fallback. PDF generation remains offline-capable with lazy-loaded/pre-cached assets. Browser checks covered new/existing orders, historical prices, share/fallback and mobile layout; real phone WhatsApp sharing remains to verify. Sarvam troubleshooting is deferred.
@@ -61,6 +67,7 @@
 cd frontend
 npm run build
 npm run test:receipt
+npm run test:only-orders
 ```
 
 The production build passes and generates the PWA service worker.
@@ -71,6 +78,7 @@ The production build passes and generates the PWA service worker.
 - `orders`
 - `orderItems`
 - `productOptions`
+- `onlyOrders` (embedded lines, independent of inventory)
 
 All records use UUID identifiers and ISO timestamps to support a later FastAPI/PostgreSQL sync.
 

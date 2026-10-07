@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test:receipt": "node --experimental-strip-types --test tests/receipt.test.mjs",
+    "test:only-orders": "node --experimental-strip-types --test tests/onlyOrders.test.mjs",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -25,6 +26,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
+    "fake-indexeddb": "^6.2.5",
     "oxlint": "^1.79.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",

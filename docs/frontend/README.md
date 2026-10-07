@@ -6,12 +6,13 @@ The `frontend/` folder contains the installable, offline-first React PWA for SMK
 
 ## Local Data
 
-The app uses the browser's IndexedDB via Dexie. It creates a `grocery-inventory` database on the device. Version 2 contains:
+The app uses the browser's IndexedDB via Dexie. It creates a `grocery-inventory` database on the device. Version 9 contains:
 
 - `products`: stock, brand, category, pack size, measurement unit, package type, supplier-batch stock lots, expiry, GST, image, cost, margin, selling price, and timestamps.
 - `orders`: submitted sales orders.
 - `orderItems`: products, selling prices, and cost snapshots used for realized-profit reporting.
 - `productOptions`: owner-managed categories, brands, measurement units, and package types.
+- `onlyOrders`: independent orders with embedded free-text product/Volume lines, quantities, prices, and totals. Never included in inventory stock, sales metrics, or catalog queries. Backup v4 includes this table and imports v1-v3 compatibly.
 
 Data persists across refreshes and offline use, but site-data clearing can remove it. The app includes JSON backup export/import. A backend sync will provide an additional Postgres backup later.
 
@@ -24,6 +25,7 @@ Data persists across refreshes and offline use, but site-data clearing can remov
 - **Voice-assisted basket entry** (`VoiceOrderAssistant.tsx`, `services/voiceOrder.ts`): feature-detects the Web Speech API (`SpeechRecognition`/`webkitSpeechRecognition`) and renders nothing when unsupported. Supports English (`en-IN`) and Telugu (`te-IN`) via a toggle. Recognition is continuous with a manual stop so a full sentence isn't cut off at a pause. Parses quantity, product name, pack size/unit, package type, unit cost, profit margin, and selling price (deriving selling price from cost+margin when not stated), ranks catalog matches by word overlap, and shows a "Detected for new product" review of every field before requiring a manual confirm tap. Falls back to prefilling Inventory's Add new product form with all detected fields when no product matches. Requires network connectivity because browser speech recognition is cloud-based.
 - **Selectable voice engine** (`services/voiceSettings.ts`, `services/sarvamStt.ts`): a Browser/Sarvam toggle next to the language switch, persisted in `localStorage`. Browser uses the built-in Web Speech API above at no cost. Sarvam records audio with `MediaRecorder` and posts it to a Cloudflare Worker proxy (see `/worker`) that holds the Sarvam API key server-side and forwards to Sarvam's speech-to-text API; the worker URL is read from `VITE_SARVAM_PROXY_URL`. If that env var isn't set, choosing Sarvam shows an inline "not configured yet" message instead of failing silently. Sarvam also works on devices without Web Speech API support (e.g. iPhone Safari), since it only needs microphone recording.
 - **Sales**: Orders summary and a separate catalog-style basket page identified by order number. Tap an order for a read-only detail page and Edit order action. Long press enters checkbox selection mode; one selection can be edited/deleted, while multiple selections can be deleted together with stock restoration.
+- **Order modes**: `OrderHistoryHeader.tsx` provides shared From Inventory/Only Order selectors below Order History and above Recent Orders. Each mode shows only its own saved orders and New order opens that flow directly. From Inventory keeps the existing basket; Only Order opens `OnlyOrdersPage.tsx`, an independent create/list/detail/edit/delete flow with receipts. `services/onlyOrders.ts` validates positive whole quantities and non-negative finite prices/totals, derives price/total bidirectionally, and writes only to `onlyOrders`. Number allocation is inside its transaction; Only Order labels use `Order - N`, with legacy padded labels normalized for display. Only Order receipt lines map into the shared PDF service without being persisted in `orderItems`. Product and voice-review labels now use Volume instead of Pack size; inventory field storage is unchanged.
 - **Receipts** (`OrderReceipt.tsx`, `services/receipt.ts`): successful submission opens saved order details. New and existing orders support a receipt preview, optional receipt-only customer name, A5 PDF download, and Web Share file sharing with download fallback. PDFs use persisted order lines rather than mutable catalog prices, exclude costs/margins, show India time and store contact details, and paginate long orders. The receipt bundle is lazy-loaded and precached for offline use. WhatsApp is selected manually from the OS share sheet; actual device sharing requires manual verification.
 
 ## Run and Test
@@ -36,6 +38,7 @@ npm install
 npm run dev
 npm run build
 npm run test:receipt
+npm run test:only-orders
 ```
 
 `npm run build` performs the TypeScript check, production Vite build, and PWA service worker generation.

@@ -34,5 +34,7 @@ test('pack size and unit appear beside product names in PDFs', async () => {
   assert.equal(receiptProductName(packed), 'Rice (0.5 Kilograms)')
   assert.equal(receiptProductName(item), 'Rice')
   assert.equal(receiptProductName({ ...item, unit: 'Grams' }), 'Rice (Grams)')
+  assert.equal(receiptProductName({ ...packed, volume: '100 litres' }), 'Rice (100 litres)')
+  assert.equal(receiptProductName({ ...item, volume: '' }), 'Rice')
   assert.ok((await createReceipt(order, [packed]).text()).includes('Rice \\(0.5 Kilograms\\)'))
 })

@@ -15,7 +15,7 @@ export function receiptDate(soldAt: string): string {
 }
 
 export function receiptProductName(item: SalesOrderItem): string {
-  const pack = [item.measurementValue, item.unit].filter(value => value !== undefined && value !== '').join(' ')
+  const pack = item.volume ?? [item.measurementValue, item.unit].filter(value => value !== undefined && value !== '').join(' ')
   return pack ? `${item.productName} (${pack})` : item.productName
 }
 
