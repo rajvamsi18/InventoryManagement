@@ -1,10 +1,14 @@
 # SMKG Checkpoint
 
-**Updated:** 2026-09-09
-**Application:** SMKG - Sri Mareswari Kinena General Stores
+**Updated:** 2026-10-07
+**Application:** SMKG - Sri Mareswari Kirana & General Stores
 **Current phase:** Offline-first frontend MVP
 
 ## Completed
+
+- Receipt previews and PDFs now include pack size and measurement unit beside each product name. New sales snapshot these values, order edits retain available snapshots, and legacy receipts fall back to linked inventory details. All four receipt regression tests and the production build pass.
+
+- Added order receipt previews and paginated A5 PDFs with store address/contact, order number/date (India time), saved product names, quantities, selling prices, line totals, and total. Internal costs/margins are excluded; receipts do not confirm payment. Successful submissions open saved order details; existing orders also offer Receipt, Download PDF, and Share PDF. Optional customer name is receipt-only. Web Share opens the OS share sheet for WhatsApp selection, with download fallback. PDF generation remains offline-capable with lazy-loaded/pre-cached assets. Browser checks covered new/existing orders, historical prices, share/fallback and mobile layout; real phone WhatsApp sharing remains to verify. Sarvam troubleshooting is deferred.
 
 - Created the React, TypeScript, Vite PWA in `frontend/`.
 - Added GitHub Pages deployment workflow in `.github/workflows/deploy.yml`.
@@ -56,6 +60,7 @@
 ```bash
 cd frontend
 npm run build
+npm run test:receipt
 ```
 
 The production build passes and generates the PWA service worker.

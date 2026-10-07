@@ -71,6 +71,8 @@ export type SalesOrderItem = {
   orderId: string
   productId: string
   productName: string
+  measurementValue?: number
+  unit?: string
   category: ProductCategory
   quantitySold: number
   unitCost?: number

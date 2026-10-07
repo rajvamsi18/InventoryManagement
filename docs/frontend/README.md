@@ -24,14 +24,18 @@ Data persists across refreshes and offline use, but site-data clearing can remov
 - **Voice-assisted basket entry** (`VoiceOrderAssistant.tsx`, `services/voiceOrder.ts`): feature-detects the Web Speech API (`SpeechRecognition`/`webkitSpeechRecognition`) and renders nothing when unsupported. Supports English (`en-IN`) and Telugu (`te-IN`) via a toggle. Recognition is continuous with a manual stop so a full sentence isn't cut off at a pause. Parses quantity, product name, pack size/unit, package type, unit cost, profit margin, and selling price (deriving selling price from cost+margin when not stated), ranks catalog matches by word overlap, and shows a "Detected for new product" review of every field before requiring a manual confirm tap. Falls back to prefilling Inventory's Add new product form with all detected fields when no product matches. Requires network connectivity because browser speech recognition is cloud-based.
 - **Selectable voice engine** (`services/voiceSettings.ts`, `services/sarvamStt.ts`): a Browser/Sarvam toggle next to the language switch, persisted in `localStorage`. Browser uses the built-in Web Speech API above at no cost. Sarvam records audio with `MediaRecorder` and posts it to a Cloudflare Worker proxy (see `/worker`) that holds the Sarvam API key server-side and forwards to Sarvam's speech-to-text API; the worker URL is read from `VITE_SARVAM_PROXY_URL`. If that env var isn't set, choosing Sarvam shows an inline "not configured yet" message instead of failing silently. Sarvam also works on devices without Web Speech API support (e.g. iPhone Safari), since it only needs microphone recording.
 - **Sales**: Orders summary and a separate catalog-style basket page identified by order number. Tap an order for a read-only detail page and Edit order action. Long press enters checkbox selection mode; one selection can be edited/deleted, while multiple selections can be deleted together with stock restoration.
+- **Receipts** (`OrderReceipt.tsx`, `services/receipt.ts`): successful submission opens saved order details. New and existing orders support a receipt preview, optional receipt-only customer name, A5 PDF download, and Web Share file sharing with download fallback. PDFs use persisted order lines rather than mutable catalog prices, exclude costs/margins, show India time and store contact details, and paginate long orders. The receipt bundle is lazy-loaded and precached for offline use. WhatsApp is selected manually from the OS share sheet; actual device sharing requires manual verification.
 
 ## Run and Test
+
+Receipt product labels include pack size and measurement unit in preview and PDF. New sales snapshot `measurementValue` and `unit` on order items (optional non-indexed fields, no IndexedDB version change needed). Legacy receipts fall back to the linked product's current pack details. Recorded values take precedence over later catalog changes.
 
 ```bash
 cd frontend
 npm install
 npm run dev
 npm run build
+npm run test:receipt
 ```
 
 `npm run build` performs the TypeScript check, production Vite build, and PWA service worker generation.

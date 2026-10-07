@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   ArrowLeft,
@@ -26,6 +26,7 @@ import "./App.css";
 
 type Tab = "Home" | "Products" | "Inventory" | "Sales";
 const currency = (amount: number) => `Rs. ${amount.toFixed(2)}`;
+const OrderReceipt = lazy(() => import("./components/OrderReceipt").then(module => ({ default: module.OrderReceipt })));
 
 function App() {
   const [tab, setTab] = useState<Tab>("Home");
@@ -521,6 +522,8 @@ function App() {
             orderId,
             productId: product.id,
             productName: product.name,
+            measurementValue: originalItems.find(item => item.productId === product.id)?.measurementValue ?? product.measurementValue,
+            unit: originalItems.find(item => item.productId === product.id)?.unit ?? product.unit,
             category: product.category,
             quantitySold: line.quantity,
             unitCost: product.price ?? 0,
@@ -541,6 +544,7 @@ function App() {
     setSaleLines([]);
     setEditingOrder(undefined);
     setShowSalesBasket(false);
+    setViewingOrder(await inventoryDb.orders.get(orderId));
   }
   async function editOrder(order: SalesOrder) {
     const items = await inventoryDb.orderItems
@@ -1168,6 +1172,12 @@ function App() {
                 </div>
               ))}
             </section>
+            <Suspense fallback={<p role="status">Loading receipt...</p>}>
+              <OrderReceipt key={viewingOrder.id + viewingOrder.updatedAt} order={viewingOrder} items={viewingOrderItems.map(item => {
+                const product = products.find(product => product.id === item.productId);
+                return item.unit !== undefined ? item : { ...item, measurementValue: item.measurementValue ?? product?.measurementValue, unit: product?.unit };
+              })} />
+            </Suspense>
           </section>
         ) : (
         <section>

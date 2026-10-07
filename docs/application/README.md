@@ -1,13 +1,13 @@
 # SMKG Application Guide
 
-SMKG stands for Sri Mareswari Kinena General Stores.
+SMKG stands for Sri Mareswari Kirana & General Stores.
 
 ## Daily Flow
 
 1. Use **Inventory** to configure categories, brands, measurements, and package types, then enter stock with a pack size, cost, selling price, and low-stock alert.
 	Stock quantity and low-stock alert are non-negative whole-unit counts. Decimal weight or volume belongs in Pack size, not Stock quantity.
 	Brand, Category, Package type, and Measurement unit dropdowns include **Add new...**. Selecting it opens and focuses the matching Catalog options section without clearing the product form. After adding the value, SMKG selects it in the original field automatically.
-2. Use **Sales** to open a new basket. Search/filter the product catalog, add products to the basket, adjust quantity or selling price, and submit. Submitting reduces stock on the same device and returns to Recent orders.
+2. Use **Sales** to open a new basket. Search/filter the product catalog, add products to the basket, adjust quantity or selling price, and submit. Submitting reduces stock on the same device and opens the saved order details.
 	Sale quantities are positive whole units, so stock remains integer-valued after submissions, edits, deletions, and restorations.   A **Voice add** button in the basket lets the owner speak a product, quantity, pack size, unit cost, profit margin, and selling price in one sentence (e.g. "rice 2 kg unit cost 67 profit margin 20 percent"). Tap the button again to finish speaking — it keeps listening across pauses instead of cutting off. SMKG shows what it heard, ranks matching products, and lists every detected field under "Detected for new product" so the owner can review before confirming — it never adds a sale or product automatically. If no product matches, **Add as new product** opens Inventory with all detected fields prefilled, without losing the basket in progress. English and Telugu are supported via a language toggle. A second **Browser/Sarvam** toggle picks the speech engine: Browser is the free built-in engine (Android Chrome; not reliably on iPhone Safari); Sarvam records audio and sends it to a small server-side proxy for higher-accuracy transcription (small per-use cost, works on more devices including iPhone Safari, needs the shop's Sarvam proxy to be set up first). Both require an internet connection, unlike the rest of the app. Note: third-party dictation tools like Wispr Flow are not integrated into SMKG — they work independently at the phone/OS level, so an owner who has one installed can already dictate directly into any text field (like the transcript box) without any toggle here.	The basket heading displays its order number. By default it shows four most-sold quick picks; entering a search or category displays matching products with 12-item pagination.
 	If a product is missing, select **Add new product**. SMKG preserves the draft order, opens Inventory, and returns to Sales after a successful save with the product already added to the order. **Return to order** cancels the detour without losing the draft.
 	Editing a Recent order opens the same basket page with its existing products. Saving reverses the original stock movement and applies the edited basket atomically.
@@ -19,6 +19,14 @@ SMKG stands for Sri Mareswari Kinena General Stores.
 	The attention table and Sales snapshot fit the mobile viewport without horizontal scrolling.
 4. Use **Export** in Inventory regularly and store the JSON file outside the PWA.
 5. Use **Import** on a replacement/reset device to restore a compatible SMKG backup.
+
+## Order Receipts
+
+After submitting, or by opening any existing order, select **Receipt** to preview an A5-style order receipt. It includes SMKG's full store name, address, contact number, order number, date/time in India, saved product names, quantities, sale prices, line amounts, and total in INR. Internal costs and profit margins are excluded. Long orders continue onto additional PDF pages. Product names include pack size and measurement unit, for example `Rice (0.5 Kilograms)`. New order lines snapshot these details; older orders fall back to the linked product's current pack details when available. Editing a newer order retains its recorded pack details.
+
+An optional customer name appears on the preview and PDF only; it is not saved on the order. **Download PDF** saves a file named after the order, such as `SMKG-000006.pdf`. **Share PDF** opens the phone's share sheet where supported: choose WhatsApp and the recipient yourself. Otherwise the PDF downloads for manual attachment. Cancelled sharing does not change the order.
+
+PDF generation works offline once the PWA has cached its assets. Sending through WhatsApp requires connectivity. These are order receipts, not proof of payment; no paid status, GST invoice, or payment tracking is implied. Real iPhone/Android WhatsApp sharing still needs device verification.
 
 ## Pricing
 
