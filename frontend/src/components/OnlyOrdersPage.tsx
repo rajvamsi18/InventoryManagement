@@ -108,7 +108,7 @@ export function OnlyOrdersPage({ onBack }: Props) {
         {lines.map((line, index) => <div className="only-order-line" key={line.id}>
           <label>Product<input aria-label={`Product ${index + 1}`} required maxLength={200} value={line.productName} onChange={event => change(line.id, 'productName', event.target.value)} /></label>
           <label>Volume (optional)<input aria-label={`Volume ${index + 1}`} maxLength={100} value={line.volume} onChange={event => change(line.id, 'volume', event.target.value)} /></label>
-          <label>Quantity<input aria-label={`Quantity ${index + 1}`} required type="number" inputMode="numeric" min="1" step="1" value={line.quantity} onChange={event => change(line.id, 'quantity', event.target.value)} /></label>
+          <label>Quantity<input aria-label={`Quantity ${index + 1}`} required type="number" inputMode="decimal" min="0" step="any" value={line.quantity} onChange={event => change(line.id, 'quantity', event.target.value)} /></label>
           <label>Price<input aria-label={`Price ${index + 1}`} required type="number" inputMode="decimal" min="0" step="any" value={line.price} onChange={event => change(line.id, 'price', event.target.value)} /></label>
           <label>Total<input aria-label={`Total ${index + 1}`} required type="number" inputMode="decimal" min="0" step="0.01" value={line.total} onChange={event => change(line.id, 'total', event.target.value)} /></label>
           <button type="button" className="icon-button" title="Remove product" aria-label={`Remove product ${index + 1}`} disabled={lines.length === 1} onClick={() => setLines(current => current.filter(item => item.id !== line.id))}><Trash2 size={18} /></button>

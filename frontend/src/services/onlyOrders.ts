@@ -33,7 +33,7 @@ export function parseOnlyOrderLines(drafts: OnlyOrderDraft[]): OnlyOrderLine[] {
     const price = Number(line.price)
     const total = Number(line.total)
     if (!line.productName.trim()) throw new Error('Enter Product for every row.')
-    if (!Number.isSafeInteger(quantity) || quantity <= 0) throw new Error('Quantity must be a positive whole number.')
+    if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('Quantity must be greater than zero.')
     if (line.price === '' || line.total === '' || !Number.isFinite(price) || !Number.isFinite(total) || price < 0 || total < 0) {
       throw new Error('Price and Total must be non-negative numbers.')
     }
@@ -92,7 +92,7 @@ export function isOnlyOrder(value: unknown): value is OnlyOrder {
   if (!order.items.every(item => item && typeof item.id === 'string' &&
     typeof item.productName === 'string' && item.productName.trim() &&
     typeof item.volume === 'string' &&
-    Number.isSafeInteger(item.quantity) && item.quantity > 0 &&
+    Number.isFinite(item.quantity) && item.quantity > 0 &&
     typeof item.price === 'number' && Number.isFinite(item.price) && item.price >= 0 &&
     typeof item.total === 'number' && Number.isFinite(item.total) && item.total >= 0 &&
     money(item.quantity * item.price) === money(item.total))) return false

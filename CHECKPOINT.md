@@ -6,6 +6,8 @@
 
 ## Completed
 
+- Enabled positive decimal quantities in Only Order on mobile and desktop, including saving/editing, backup validation, and receipts. Zero/negative/non-finite quantities remain invalid; inventory-linked stock/sale quantities are still whole numbers. Regression coverage includes 1.25 x 65 = 81.25 and 0.25 x 65 = 16.25, reverse price derivation, decimal persistence/backup acceptance, and receipt output.
+
 - Fixed unreadable Telugu receipt PDFs by replacing Helvetica/jsPDF rendering with pdfmake OpenType shaping and locally bundled Noto Latin/Telugu fonts. Supports mixed product names, Telugu Volume/customer text, and selectable Unicode PDF text. PDF preparation now completes before Download/Share; old PDFs must be regenerated. Fonts and their license are precached for offline use. All seven regression tests pass; inspected a rendered mixed-language PDF without system-font fallback and verified fresh production PDF generation/share with its server stopped (active user gesture retained). Runtime dependency audit is clean. Receipt renderer is larger but still lazy-loaded.
 
 - Changed Only Order labels to `OR N` in history, details, saved records and receipts; legacy labels normalize without changing inventory-order numbering. Added Only Order long-press multi-selection, checkboxes/select-all, single Edit, confirmed bulk Delete, and Clear selection. Reduced mobile detail action sizes and prevented checkbox pointer/keyboard events from double-toggling shared order rows. Verified cancellation and deletion with temporary fixtures, unselected-order/inventory preservation, OR receipt PDF output, mobile layouts, and checkbox interaction in both flows.

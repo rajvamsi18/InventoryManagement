@@ -84,7 +84,7 @@ export function MobileOnlyOrderEditor({ lines, onChange, onSubmit, onCancel, sav
           <label>Product<input ref={productRef} required maxLength={200} value={draft.productName} onChange={event => change('productName', event.target.value)} /></label>
           <label>Volume (optional)<input maxLength={100} value={draft.volume} onChange={event => change('volume', event.target.value)} /></label>
           <div className="mobile-product-prices">
-            <label>Quantity<input required type="number" inputMode="numeric" min="1" step="1" value={draft.quantity} onChange={event => change('quantity', event.target.value)} /></label>
+            <label>Quantity<input required type="number" inputMode="decimal" min="0" step="any" value={draft.quantity} onChange={event => change('quantity', event.target.value)} /></label>
             <label>Price<input required type="number" inputMode="decimal" min="0" step="any" value={draft.price} onChange={event => change('price', event.target.value)} /></label>
             <label>Total<input required type="number" inputMode="decimal" min="0" step="0.01" value={draft.total} onChange={event => change('total', event.target.value)} /></label>
           </div>

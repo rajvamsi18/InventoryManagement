@@ -48,6 +48,12 @@ test('long orders paginate and retain the total', async () => {
   assert.ok(pdf.text.includes('18000.00'))
 })
 
+test('receipt retains decimal quantity and its calculated amount', async () => {
+  const decimal = { ...item, productName: 'Sugar', quantitySold: 0.25, unitSellingPrice: 65, lineTotal: 16.25 }
+  const pdf = await pdfContents(await createReceipt({ ...order, totalAmount: 16.25 }, [decimal]))
+  for (const value of ['Sugar', '0.25', '65.00', '16.25']) assert.ok(contains(pdf.text, value), value)
+})
+
 test('order dates use store timezone', () => {
   assert.equal(receiptDate('2026-10-07T12:00:00Z'), '7 Oct 2026, 5:30 pm')
 })
