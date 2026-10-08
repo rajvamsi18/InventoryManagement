@@ -44,7 +44,7 @@ export function parseOnlyOrderLines(drafts: OnlyOrderDraft[]): OnlyOrderLine[] {
 
 export function onlyOrderNumber(value: string): string {
   const sequence = Number(value.match(/(\d+)$/)?.[1])
-  return Number.isSafeInteger(sequence) && sequence > 0 ? `Order - ${sequence}` : value
+  return Number.isSafeInteger(sequence) && sequence > 0 ? `OR ${sequence}` : value
 }
 
 export async function saveOnlyOrder(db: typeof inventoryDb, drafts: OnlyOrderDraft[], orderId?: string): Promise<OnlyOrder> {
@@ -56,7 +56,7 @@ export async function saveOnlyOrder(db: typeof inventoryDb, drafts: OnlyOrderDra
     const sequence = existing ? 0 : (await db.onlyOrders.toArray()).reduce((highest, order) => Math.max(highest, Number(order.orderNumber.match(/(\d+)$/)?.[1] ?? 0)), 0) + 1
     const order: OnlyOrder = {
       id: existing?.id ?? crypto.randomUUID(),
-      orderNumber: existing ? onlyOrderNumber(existing.orderNumber) : `Order - ${sequence}`,
+      orderNumber: existing ? onlyOrderNumber(existing.orderNumber) : `OR ${sequence}`,
       soldAt: existing?.soldAt ?? now,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -66,6 +66,10 @@ export async function saveOnlyOrder(db: typeof inventoryDb, drafts: OnlyOrderDra
     await db.onlyOrders.put(order)
     return order
   })
+}
+
+export async function deleteOnlyOrders(db: typeof inventoryDb, orderIds: string[]): Promise<void> {
+  await db.onlyOrders.bulkDelete(orderIds)
 }
 
 export function onlyOrderReceiptItems(order: OnlyOrder): SalesOrderItem[] {

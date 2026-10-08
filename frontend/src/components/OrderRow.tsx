@@ -33,7 +33,7 @@ export function OrderRow({ order, selectionMode, selected, onOpen, onSelect }: P
   }
 
   return <div className={`order-row ${selected ? 'selected' : ''}`} role="button" tabIndex={0} onPointerDown={startPress} onPointerUp={activate} onPointerCancel={cancelPress} onPointerLeave={cancelPress} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectionMode ? onSelect(order.id) : onOpen(order) } }}>
-    {selectionMode && <input type="checkbox" checked={selected} onChange={() => onSelect(order.id)} onClick={(event) => event.stopPropagation()} aria-label={`Select ${order.orderNumber}`} />}
+    {selectionMode && <input type="checkbox" checked={selected} onChange={() => onSelect(order.id)} onPointerDown={(event) => event.stopPropagation()} onPointerUp={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()} aria-label={`Select ${order.orderNumber}`} />}
     <span>{order.orderNumber}<small>{new Date(order.soldAt).toLocaleString()}</small></span>
     <strong>{order.totalAmount.toFixed(2)}</strong>
   </div>

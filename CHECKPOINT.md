@@ -1,10 +1,14 @@
 # SMKG Checkpoint
 
-**Updated:** 2026-10-07
+**Updated:** 2026-10-08
 **Application:** SMKG - Sri Mareswari Kirana & General Stores
 **Current phase:** Offline-first frontend MVP
 
 ## Completed
+
+- Changed Only Order labels to `OR N` in history, details, saved records and receipts; legacy labels normalize without changing inventory-order numbering. Added Only Order long-press multi-selection, checkboxes/select-all, single Edit, confirmed bulk Delete, and Clear selection. Reduced mobile detail action sizes and prevented checkbox pointer/keyboard events from double-toggling shared order rows. Verified cancellation and deletion with temporary fixtures, unselected-order/inventory preservation, OR receipt PDF output, mobile layouts, and checkbox interaction in both flows.
+
+- Added mobile-only compact Only Order entry/editing with a bottom-sheet product editor, Add & next/Done actions, temporary product drafts, row editing/deletion, and a fixed safe-area-aware total/Add/Submit/Cancel bar. Desktop grid is unchanged. Verified eight-product entry, cancellation, quantity validation, edits/deletion, no persistence before submission, order submission and saved-order edits, receipt values, mobile 320/390px and shortened-viewport layouts, and desktop switching. Build, lint and all six regression tests pass; actual iPhone keyboard behavior remains for owner review.
 
 - Made Volume optional in Only Order creation/editing and backup validation. Blank-volume receipts show just the product name. Inventory Volume requirements are unchanged; regression tests cover blank-volume saving and backup compatibility.
 

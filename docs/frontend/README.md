@@ -30,6 +30,10 @@ Data persists across refreshes and offline use, but site-data clearing can remov
 
 ## Run and Test
 
+Only Order display and saved numbering now use `OR N`; legacy labels normalize on display/edit, including receipt titles. Only Order history reuses `OrderRow` long-press selection, checkbox/select-all controls, and contextual single-edit/bulk-delete actions. `deleteOnlyOrders` deletes only from the independent table. Shared row checkboxes stop pointer/keyboard propagation so clicks toggle once rather than also activating the row. Detail actions have dedicated compact styles instead of inheriting the receipt toolbar's mobile stretching.
+
+`MobileOnlyOrderEditor.tsx` is selected at widths up to 700px using a subscribed media query. It uses a native modal dialog styled as a bottom sheet, a separate temporary product draft, existing `updateOnlyOrderLine`/`parseOnlyOrderLines` validation, compact editable rows, and safe-area-aware fixed actions. Only committed draft rows are passed to order submission; cancelling a sheet does not mutate them. Wider screens retain the desktop editor. Browser checks cover Add & next, row editing/cancellation/deletion, submission and saved-order edits, receipts, 320/390px layouts, a shortened viewport, and switching back to the desktop grid.
+
 Receipt product labels include pack size and measurement unit in preview and PDF. New sales snapshot `measurementValue` and `unit` on order items (optional non-indexed fields, no IndexedDB version change needed). Legacy receipts fall back to the linked product's current pack details. Recorded values take precedence over later catalog changes.
 
 ```bash

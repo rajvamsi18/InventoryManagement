@@ -2,11 +2,12 @@ import 'fake-indexeddb/auto'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { inventoryDb } from '../src/services/database.ts'
-import { emptyOnlyOrderLine, updateOnlyOrderLine, parseOnlyOrderLines, saveOnlyOrder, onlyOrderReceiptItems, isOnlyOrder, onlyOrderNumber } from '../src/services/onlyOrders.ts'
+import { deleteOnlyOrders, emptyOnlyOrderLine, updateOnlyOrderLine, parseOnlyOrderLines, saveOnlyOrder, onlyOrderReceiptItems, isOnlyOrder, onlyOrderNumber } from '../src/services/onlyOrders.ts'
 
 test('price and total derive each other; quantities reject fractions', () => {
-  assert.equal(onlyOrderNumber('SMKG-ONLY-000012'), 'Order - 12')
-  assert.equal(onlyOrderNumber('Order - 12'), 'Order - 12')
+  assert.equal(onlyOrderNumber('SMKG-ONLY-000012'), 'OR 12')
+  assert.equal(onlyOrderNumber('Order - 12'), 'OR 12')
+  assert.equal(onlyOrderNumber('OR 3'), 'OR 3')
   let line = { ...emptyOnlyOrderLine(), productName: 'Rice 123', volume: '200 Grams' }
   line = updateOnlyOrderLine(line, 'quantity', '3')
   line = updateOnlyOrderLine(line, 'price', '20')
@@ -32,8 +33,8 @@ test('Only Order create/edit/delete stay isolated from inventory tables', async 
   const second = await saveOnlyOrder(inventoryDb, [{ ...draft, volume: '' }])
   assert.equal(second.items[0].volume, '')
   assert.ok(isOnlyOrder(second))
-  assert.equal(order.orderNumber, 'Order - 1')
-  assert.equal(second.orderNumber, 'Order - 2')
+  assert.equal(order.orderNumber, 'OR 1')
+  assert.equal(second.orderNumber, 'OR 2')
   assert.notEqual(order.orderNumber, second.orderNumber)
   const edited = await saveOnlyOrder(inventoryDb, [{ ...draft, quantity: '3', total: '90' }], order.id)
   assert.equal(edited.orderNumber, order.orderNumber)
@@ -43,7 +44,9 @@ test('Only Order create/edit/delete stay isolated from inventory tables', async 
   assert.ok(isOnlyOrder(edited))
   assert.equal(isOnlyOrder({ ...edited, items: [{ ...edited.items[0], quantity: 1.5 }] }), false)
   assert.equal(isOnlyOrder({ ...edited, totalAmount: 999 }), false)
-  await inventoryDb.onlyOrders.bulkDelete([order.id, second.id])
+  const remaining = await saveOnlyOrder(inventoryDb, [draft])
+  await deleteOnlyOrders(inventoryDb, [order.id, second.id])
+  assert.deepEqual((await inventoryDb.onlyOrders.toArray()).map(order => order.id), [remaining.id])
   assert.deepEqual(await inventoryDb.products.get(product.id), product)
   assert.deepEqual([await inventoryDb.orders.count(), await inventoryDb.orderItems.count()], counts)
   await inventoryDb.delete()

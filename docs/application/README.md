@@ -28,9 +28,13 @@ In **Sales**, the **Order History** tile shows **From Inventory** and **Only Ord
 
 **Only Order** opens a separate order page. Product and Volume are free-text fields (letters and numbers, such as `Rice 123` and `200 Grams`). Quantity must be a positive whole number. Price and Total accept non-negative numbers; editing Price or Quantity calculates Total, and editing Total calculates Price using Quantity. Line totals and the order total are rounded to two decimal places; total-derived unit prices retain precision internally. Add/remove rows, submit, open saved orders, edit, delete with confirmation, and create/download/share receipts from this page.
 
-Only Order records use `Order - 1`, `Order - 2`, and so on, without zero padding, and embed all product information directly in the order. Older padded numbers display in this same format in history, details, and receipts. They never create catalog products, alter stock, appear in the inventory-order list, or affect Home/product sales statistics. Switch back using **From Inventory** in the Order History tile. Unsaved Only Order edits can be cancelled with confirmation; they are not persistent drafts.
+Only Order records use `OR 1`, `OR 2`, and so on, without zero padding, and embed all product information directly in the order. Older padded numbers and `Order - N` labels display in this same format in history, details, and receipts. They never create catalog products, alter stock, appear in the inventory-order list, or affect Home/product sales statistics. Switch back using **From Inventory** in the Order History tile. Unsaved Only Order edits can be cancelled with confirmation; they are not persistent drafts.
+
+In Only Order history, long press a row to reveal checkboxes. Select individual orders or use Select all orders. One selection offers Edit/Delete; multiple selections offer Delete, with confirmation before removing them. Clear selection exits selection mode. Only Order bulk deletion does not change inventory. The detail-page Edit order and Delete controls are compact on mobile.
 
 Backup version 4 includes both order flows. Import accepts versions 1-4; older backups contain no Only Order records. Receipts for Only Order use the Volume text exactly as entered.
+
+On mobile (up to 700px wide), Only Order creation/editing shows a compact product list rather than an input grid. Tap a product row or its pencil icon to edit it in a bottom sheet. **Add & next** adds the product to the local draft and clears the editor for another; **Done** adds/saves that product and returns to the list. Closing the editor discards only its unfinished changes. The fixed bottom bar keeps the order total, Add product, Submit/Save order, and a Cancel order icon accessible. Product rows are not persisted until Submit/Save order. Desktop keeps the existing input grid. Real phone keyboard behavior should be reviewed on-device.
 
 ## Order Receipts
 
