@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Download, ReceiptText, Share2 } from 'lucide-react'
 import type { SalesOrder, SalesOrderItem } from '../services/database'
 import { createReceipt, downloadReceipt, receiptDate, receiptProductName, STORE } from '../services/receipt'
@@ -10,10 +10,27 @@ export function OrderReceipt({ order, items }: Props) {
   const [customerName, setCustomerName] = useState('')
   const [sharing, setSharing] = useState(false)
   const [message, setMessage] = useState('')
+  const [prepared, setPrepared] = useState<{ key: string; file?: File; error?: string }>()
+  const receiptKey = JSON.stringify({ order, items, customerName })
+  const file = prepared?.key === receiptKey ? prepared.file : undefined
+  const pdfError = prepared?.key === receiptKey ? prepared.error : undefined
+
+  useEffect(() => {
+    if (!open || !items.length) return
+    let cancelled = false
+    const values = JSON.parse(receiptKey) as { order: SalesOrder; items: SalesOrderItem[]; customerName: string }
+    void createReceipt(values.order, values.items, values.customerName).then(file => {
+      if (!cancelled) setPrepared({ key: receiptKey, file })
+    }).catch(() => {
+      if (!cancelled) setPrepared({ key: receiptKey, error: 'Could not create the receipt. Close and reopen Receipt to retry.' })
+    })
+    return () => { cancelled = true }
+  }, [open, receiptKey, items.length])
 
   function download() {
+    if (!file) return
     try {
-      downloadReceipt(createReceipt(order, items, customerName))
+      downloadReceipt(file)
       setMessage('PDF downloaded. You can attach it in WhatsApp.')
     } catch {
       setMessage('Could not create the receipt. Please try again.')
@@ -21,10 +38,10 @@ export function OrderReceipt({ order, items }: Props) {
   }
 
   async function share() {
+    if (!file) return
     setSharing(true)
     setMessage('')
     try {
-      const file = createReceipt(order, items, customerName)
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: `${STORE.name} - ${order.orderNumber}` })
       } else {
@@ -52,14 +69,16 @@ export function OrderReceipt({ order, items }: Props) {
               <input value={customerName} maxLength={120} onChange={event => setCustomerName(event.target.value)} />
             </label>
             <div className="receipt-actions">
-              <button type="button" className="primary-button" onClick={download} disabled={!items.length || sharing}>
+              <button type="button" className="primary-button" onClick={download} disabled={!file || sharing}>
                 <Download size={16} /> Download PDF
               </button>
-              <button type="button" className="primary-button" onClick={() => void share()} disabled={!items.length || sharing}>
+              <button type="button" className="primary-button" onClick={() => void share()} disabled={!file || sharing}>
                 <Share2 size={16} /> {sharing ? 'Sharing...' : 'Share PDF'}
               </button>
             </div>
           </div>
+          {!file && items.length > 0 && !pdfError && <p role="status" className="receipt-status">Preparing PDF...</p>}
+          {pdfError && <p role="alert" className="receipt-status">{pdfError}</p>}
           {message && <p role="status" className="receipt-status">{message}</p>}
           <article className="receipt-preview" aria-label="Order receipt preview">
             <header className="receipt-store">

@@ -44,6 +44,8 @@ An optional customer name appears on the preview and PDF only; it is not saved o
 
 PDF generation works offline once the PWA has cached its assets. Sending through WhatsApp requires connectivity. These are order receipts, not proof of payment; no paid status, GST invoice, or payment tracking is implied. Real iPhone/Android WhatsApp sharing still needs device verification.
 
+Receipt PDFs support English and Telugu product names, Volume text, and customer names using embedded fonts and Telugu letter shaping. The app prepares the PDF before enabling Download/Share, keeping the mobile share action tied to your tap. Font files are bundled and cached with the PWA, not downloaded from a third-party service during use. PDFs previously generated with unreadable Telugu must be regenerated from their saved orders after updating the app.
+
 ## Pricing
 
 When a cost and profit margin are given, the app suggests:

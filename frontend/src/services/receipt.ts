@@ -1,5 +1,5 @@
-import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import pdfMake from 'pdfmake/build/pdfmake.js'
+import type { TDocumentDefinitions, Content } from 'pdfmake/interfaces'
 import type { SalesOrder, SalesOrderItem } from './database'
 
 export const STORE = {
@@ -19,60 +19,102 @@ export function receiptProductName(item: SalesOrderItem): string {
   return pack ? `${item.productName} (${pack})` : item.productName
 }
 
-export function createReceipt(order: SalesOrder, items: SalesOrderItem[], customerName = ''): File {
-  const pdf = new jsPDF({ format: 'a5', unit: 'mm' })
-  const width = pdf.internal.pageSize.getWidth()
-  pdf.setTextColor(28, 101, 70)
-  pdf.setFont('helvetica', 'bold')
-  pdf.setFontSize(22)
-  pdf.text('SMKG', 12, 17)
-  pdf.setFontSize(10)
-  pdf.text('Sri Mareswari Kirana & General Stores', 12, 24)
-  pdf.setTextColor(55, 65, 60)
-  pdf.setFont('helvetica', 'normal')
-  pdf.setFontSize(8)
-  const address = pdf.splitTextToSize(STORE.address, width - 24)
-  pdf.text(address, 12, 31)
-  const contactY = 31 + address.length * 4
-  pdf.text(`Contact: ${STORE.contact}`, 12, contactY)
-  pdf.setDrawColor(28, 101, 70)
-  pdf.line(12, contactY + 4, width - 12, contactY + 4)
-  pdf.setFont('helvetica', 'bold')
-  pdf.setFontSize(12)
-  pdf.text('ORDER RECEIPT', 12, contactY + 12)
-  pdf.setFont('helvetica', 'normal')
-  pdf.setFontSize(9)
-  pdf.text(`Order: ${order.orderNumber}`, 12, contactY + 19)
-  pdf.text(`Date: ${receiptDate(order.soldAt)} IST`, 12, contactY + 25)
-  let tableY = contactY + 31
-  if (customerName.trim()) {
-    const customer = pdf.splitTextToSize(`Customer: ${customerName.trim()}`, width - 24)
-    pdf.text(customer, 12, tableY)
-    tableY += customer.length * 4 + 3
+let fontPromise: Promise<Record<string, string>> | undefined
+
+async function fontData(url: URL): Promise<string> {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error('Could not load receipt fonts.')
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  let binary = ''
+  for (let offset = 0; offset < bytes.length; offset += 32768) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768))
   }
-  autoTable(pdf, {
-    startY: tableY,
-    margin: { top: 12, bottom: 18, left: 12, right: 12 },
-    head: [['Product', 'Qty', 'Price (INR)', 'Amount (INR)']],
-    body: items.map(item => [receiptProductName(item), item.quantitySold, item.unitSellingPrice.toFixed(2), item.lineTotal.toFixed(2)]),
-    foot: [['TOTAL (INR)', '', '', order.totalAmount.toFixed(2)]],
-    showFoot: 'lastPage',
-    theme: 'striped',
-    styles: { font: 'helvetica', fontSize: 9, cellPadding: 3, overflow: 'linebreak' },
-    headStyles: { fillColor: [28, 101, 70] },
-    footStyles: { fillColor: [28, 101, 70] },
-    columnStyles: { 0: { cellWidth: 53 }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+  return btoa(binary)
+}
+
+function receiptFonts(): Promise<Record<string, string>> {
+  fontPromise ??= Promise.all([
+    fontData(new URL('../assets/NotoSansTelugu-Regular.ttf', import.meta.url)),
+    fontData(new URL('../assets/NotoSansTelugu-Bold.ttf', import.meta.url)),
+    fontData(new URL('../assets/NotoSans-Regular.ttf', import.meta.url)),
+    fontData(new URL('../assets/NotoSans-Bold.ttf', import.meta.url)),
+  ]).then(([regular, bold, latin, latinBold]) => ({ 'regular.ttf': regular, 'bold.ttf': bold, 'latin.ttf': latin, 'latin-bold.ttf': latinBold })).catch(error => {
+    fontPromise = undefined
+    throw error
   })
-  const pages = pdf.getNumberOfPages()
-  for (let page = 1; page <= pages; page += 1) {
-    pdf.setPage(page)
-    pdf.setFontSize(8)
-    pdf.setTextColor(80, 90, 85)
-    pdf.text('Thank you for shopping with us.', 12, 197)
-    pdf.text('This order receipt does not confirm payment.', 12, 202)
-    pdf.text(`${page} / ${pages}`, width - 12, 202, { align: 'right' })
+  return fontPromise
+}
+
+function receiptText(value: string): { text: string; font: string }[] {
+  const runs: { text: string; font: string }[] = []
+  for (const { segment } of new Intl.Segmenter('te', { granularity: 'grapheme' }).segment(value)) {
+    const font = /\p{Script=Telugu}/u.test(segment) ? 'Telugu' : 'Receipt'
+    const previous = runs.at(-1)
+    if (previous?.font === font) previous.text += segment
+    else runs.push({ text: segment, font })
   }
-  return new File([pdf.output('arraybuffer')], `${order.orderNumber.replace(/[^a-zA-Z0-9-]/g, '_')}.pdf`, { type: 'application/pdf' })
+  return runs
+}
+
+export async function createReceipt(order: SalesOrder, items: SalesOrderItem[], customerName = ''): Promise<File> {
+  const fonts = await receiptFonts()
+  const green = '#1c6546'
+  const content: Content[] = [
+    { text: 'SMKG', fontSize: 22, bold: true, color: green },
+    { text: 'Sri Mareswari Kirana & General Stores', fontSize: 10, bold: true, color: green },
+    { text: STORE.address, fontSize: 8, margin: [0, 6, 0, 3] },
+    { text: `Contact: ${STORE.contact}`, fontSize: 8 },
+    { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 351.53, y2: 0, lineWidth: 1, lineColor: green }], margin: [0, 10, 0, 10] },
+    { text: 'ORDER RECEIPT', fontSize: 12, bold: true, margin: [0, 0, 0, 6] },
+    { text: `Order: ${order.orderNumber}`, margin: [0, 0, 0, 3] },
+    { text: `Date: ${receiptDate(order.soldAt)} IST`, margin: [0, 0, 0, 6] },
+  ]
+  if (customerName.trim()) content.push({ text: receiptText(`Customer: ${customerName.trim()}`), margin: [0, 0, 0, 6] })
+  content.push({
+    table: {
+      headerRows: 1,
+      dontBreakRows: true,
+      widths: ['*', 26, 64, 76],
+      body: [
+        ['Product', 'Qty', 'Price (INR)', 'Amount (INR)'].map((text, index) => ({ text, bold: true, color: '#fff', alignment: index ? 'right' as const : 'left' as const })),
+        ...items.map(item => [
+          { text: receiptText(receiptProductName(item)) },
+          { text: String(item.quantitySold), alignment: 'right' as const },
+          { text: item.unitSellingPrice.toFixed(2), alignment: 'right' as const },
+          { text: item.lineTotal.toFixed(2), alignment: 'right' as const },
+        ]),
+        [{ text: 'TOTAL (INR)', colSpan: 3, bold: true, color: '#fff' }, {}, {}, { text: order.totalAmount.toFixed(2), bold: true, color: '#fff', alignment: 'right' }],
+      ],
+    },
+    layout: {
+      fillColor: row => row === 0 || row === items.length + 1 ? green : row % 2 ? '#f3f5f3' : '#fff',
+      hLineWidth: () => 0,
+      vLineWidth: () => 0,
+      paddingLeft: () => 6,
+      paddingRight: () => 6,
+      paddingTop: () => 7,
+      paddingBottom: () => 7,
+    },
+  })
+  const definition: TDocumentDefinitions = {
+    pageSize: 'A5',
+    pageMargins: [34, 34, 34, 50],
+    defaultStyle: { font: 'Receipt', fontSize: 9, color: '#37413c' },
+    content,
+    footer: (page, pages) => ({
+      columns: [
+        { stack: ['Thank you for shopping with us.', 'This order receipt does not confirm payment.'] },
+        { text: `${page} / ${pages}`, alignment: 'right', width: 40 },
+      ],
+      margin: [34, 8, 34, 0], fontSize: 8, color: '#505a55',
+    }),
+  }
+  const pdf = pdfMake.createPdf(definition, undefined, {
+    Receipt: { normal: 'latin.ttf', bold: 'latin-bold.ttf', italics: 'latin.ttf', bolditalics: 'latin-bold.ttf' },
+    Telugu: { normal: 'regular.ttf', bold: 'bold.ttf', italics: 'regular.ttf', bolditalics: 'bold.ttf' },
+  }, fonts)
+  const buffer = await new Promise<Uint8Array>(resolve => pdf.getBuffer(resolve))
+  return new File([new Uint8Array(buffer)], `${order.orderNumber.replace(/[^a-zA-Z0-9-]/g, '_')}.pdf`, { type: 'application/pdf' })
 }
 
 export function downloadReceipt(file: File): void {
