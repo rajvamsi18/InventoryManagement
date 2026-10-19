@@ -108,6 +108,7 @@ async function readList(request: Request, env: Env): Promise<Response> {
   try {
     const modelResponse = await env.AI.run(READ_LIST_MODEL, {
       messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
       max_tokens: 1600,
       temperature: 0.1,
     })

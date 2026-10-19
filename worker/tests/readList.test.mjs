@@ -5,7 +5,7 @@ import worker from '../src/index.ts'
 const origin = 'https://rajvamsi18.github.io'
 
 function createEnv({ modelResponse, modelEnvelope, limited = false } = {}) {
-  const calls = { model: 0, limit: 0, modelName: '', prompt: '' }
+  const calls = { model: 0, limit: 0, modelName: '', prompt: '', responseFormat: undefined }
   return {
     calls,
     env: {
@@ -15,6 +15,7 @@ function createEnv({ modelResponse, modelEnvelope, limited = false } = {}) {
           calls.model += 1
           calls.modelName = model
           calls.prompt = input.messages[0].content
+          calls.responseFormat = input.response_format
           return modelEnvelope ?? { choices: [{ message: { content: modelResponse ?? JSON.stringify({ items: [{ productName: 'బియ్యం', volume: '5 kg', quantity: null }, { productName: 'Milk', volume: '', quantity: 1.5 }] }) } }] }
         },
       },
@@ -44,6 +45,7 @@ test('read-list returns only Only Order fields and marks an assumed quantity', a
 
   assert.equal(response.status, 200)
   assert.equal(calls.modelName, '@cf/qwen/qwen3-30b-a3b-fp8')
+  assert.deepEqual(calls.responseFormat, { type: 'json_object' })
   assert.deepEqual(data.items, [
     { productName: 'బియ్యం', volume: '5 kg', quantity: 1, quantityAssumed: true },
     { productName: 'Milk', volume: '', quantity: 1.5, quantityAssumed: false },
