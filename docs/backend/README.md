@@ -4,10 +4,12 @@ The FastAPI backend is not implemented yet. The frontend intentionally remains u
 
 ## Speech-to-Text Proxy (implemented)
 
-`worker/` holds a small Cloudflare Worker that proxies recorded audio to the Sarvam
-AI speech-to-text API so the frontend's optional Sarvam voice engine never needs to
-embed the Sarvam API key in the browser bundle. It is stateless and unrelated to the
-FastAPI sync backend below — see `worker/README.md` for setup and deployment.
+`worker/` holds a small Cloudflare Worker with two stateless routes: it proxies
+recorded audio to Sarvam so the optional voice engine never embeds its API key in
+the browser bundle, and it sends user-submitted WhatsApp text to Workers AI to
+extract Only Order draft lines. The latter does not read or write inventory and
+returns no prices. The Worker is unrelated to the FastAPI sync backend below — see
+`worker/README.md` for setup and deployment.
 
 ## Next Backend Scope
 

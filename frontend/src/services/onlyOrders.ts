@@ -7,16 +7,37 @@ export type OnlyOrderDraft = {
   quantity: string
   price: string
   total: string
+  quantityAssumed?: boolean
+}
+
+export type ReadListItem = {
+  productName: string
+  volume: string
+  quantity: number
+  quantityAssumed: boolean
 }
 
 export function emptyOnlyOrderLine(): OnlyOrderDraft {
   return { id: crypto.randomUUID(), productName: '', volume: '', quantity: '1', price: '', total: '' }
 }
 
+export function draftsFromReadList(items: ReadListItem[]): OnlyOrderDraft[] {
+  return items.map(item => ({
+    ...emptyOnlyOrderLine(),
+    productName: item.productName,
+    volume: item.volume,
+    quantity: String(item.quantity),
+    quantityAssumed: item.quantityAssumed,
+    price: '',
+    total: '',
+  }))
+}
+
 const money = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
 
 export function updateOnlyOrderLine(line: OnlyOrderDraft, field: keyof OnlyOrderDraft, value: string): OnlyOrderDraft {
   const next = { ...line, [field]: value }
+  if (field === 'quantity') next.quantityAssumed = false
   const quantity = Number(next.quantity)
   if (field === 'total') {
     next.price = next.total !== '' && quantity > 0 ? String(Number(next.total) / quantity) : ''
@@ -26,14 +47,19 @@ export function updateOnlyOrderLine(line: OnlyOrderDraft, field: keyof OnlyOrder
   return next
 }
 
+export function validateOnlyOrderDraftLine(line: OnlyOrderDraft): void {
+  const quantity = Number(line.quantity)
+  if (!line.productName.trim()) throw new Error('Enter Product for every row.')
+  if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('Quantity must be greater than zero.')
+}
+
 export function parseOnlyOrderLines(drafts: OnlyOrderDraft[]): OnlyOrderLine[] {
   if (!drafts.length) throw new Error('Add at least one product.')
   return drafts.map(line => {
+    validateOnlyOrderDraftLine(line)
     const quantity = Number(line.quantity)
     const price = Number(line.price)
     const total = Number(line.total)
-    if (!line.productName.trim()) throw new Error('Enter Product for every row.')
-    if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('Quantity must be greater than zero.')
     if (line.price === '' || line.total === '' || !Number.isFinite(price) || !Number.isFinite(total) || price < 0 || total < 0) {
       throw new Error('Price and Total must be non-negative numbers.')
     }

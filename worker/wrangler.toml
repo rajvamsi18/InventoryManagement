@@ -6,5 +6,16 @@ compatibility_date = "2026-09-01"
 # The GitHub Pages origin that is allowed to call this proxy. Update to your real Pages URL.
 ALLOWED_ORIGIN = "https://rajvamsi18.github.io"
 
+[ai]
+binding = "AI"
+
+[[ratelimits]]
+name = "READ_LIST_LIMITER"
+namespace_id = "84192017"
+
+	[ratelimits.simple]
+	limit = 12
+	period = 60
+
 # Set the real secret (never commit it) with:
 #   wrangler secret put SARVAM_API_KEY

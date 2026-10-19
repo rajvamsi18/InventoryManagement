@@ -30,8 +30,15 @@ const currency = (amount: number) => `Rs. ${amount.toFixed(2)}`;
 const OrderReceipt = lazy(() => import("./components/OrderReceipt").then(module => ({ default: module.OrderReceipt })));
 const OnlyOrdersPage = lazy(() => import("./components/OnlyOrdersPage").then(module => ({ default: module.OnlyOrdersPage })));
 
+function sharedOnlyOrderMessage() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('share') === 'only-order'
+    ? (params.get('text') || params.get('title') || params.get('url') || '').trim()
+    : '';
+}
+
 function App() {
-  const [tab, setTab] = useState<Tab>("Home");
+  const [tab, setTab] = useState<Tab>(() => sharedOnlyOrderMessage() ? 'Sales' : 'Home');
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -46,7 +53,8 @@ function App() {
   const [newProductPrefill, setNewProductPrefill] = useState<VoiceProductPrefill>();
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [viewingOrder, setViewingOrder] = useState<SalesOrder>();
-  const [salesMode, setSalesMode] = useState<'inventory' | 'only'>('inventory');
+  const [salesMode, setSalesMode] = useState<'inventory' | 'only'>(() => sharedOnlyOrderMessage() ? 'only' : 'inventory');
+  const [sharedMessage, setSharedMessage] = useState(sharedOnlyOrderMessage);
   const [requestedOptionType, setRequestedOptionType] =
     useState<ProductOptionType>();
   const [addedOption, setAddedOption] = useState<{
@@ -84,6 +92,16 @@ function App() {
       window.removeEventListener("online", update);
       window.removeEventListener("offline", update);
     };
+  }, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('share') !== 'only-order') return;
+    params.delete('share');
+    params.delete('text');
+    params.delete('title');
+    params.delete('url');
+    const remainingQuery = params.toString();
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${remainingQuery ? `?${remainingQuery}` : ''}${window.location.hash}`);
   }, []);
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -1104,7 +1122,7 @@ function App() {
       {tab === "Sales" && (
         salesMode === 'only' ? (
           <Suspense fallback={<p role="status">Loading orders...</p>}>
-            <OnlyOrdersPage onBack={() => setSalesMode('inventory')} />
+            <OnlyOrdersPage onBack={() => setSalesMode('inventory')} sharedMessage={sharedMessage} onSharedMessageConsumed={() => setSharedMessage('')} />
           </Suspense>
         ) : showSalesBasket ? (
           <SalesBasket

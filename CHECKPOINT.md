@@ -1,10 +1,12 @@
 # SMKG Checkpoint
 
-**Updated:** 2026-10-08
+**Updated:** 2026-10-19
 **Application:** SMKG - Sri Mareswari Kirana & General Stores
 **Current phase:** Offline-first frontend MVP
 
 ## Completed
+
+- Added a review-first WhatsApp Read List path for Only Order: paste text or receive it through the installed Android PWA share target, parse with a separate Cloudflare Workers AI route, and create unsaved editable draft rows. It does not look up inventory or prices; Price/Total stay blank. Missing quantities default to 1 and carry a visible review flag. Worker limits input size, result rows, and request bursts. Worker and Only Order draft tests pass. Still requires deploying the Worker with Workers AI enabled, rebuilding/deploying the PWA, and trying representative real Telugu/transliterated order messages on device.
 
 - Enabled positive decimal quantities in Only Order on mobile and desktop, including saving/editing, backup validation, and receipts. Zero/negative/non-finite quantities remain invalid; inventory-linked stock/sale quantities are still whole numbers. Regression coverage includes 1.25 x 65 = 81.25 and 0.25 x 65 = 16.25, reverse price derivation, decimal persistence/backup acceptance, and receipt output.
 

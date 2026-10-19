@@ -2,7 +2,24 @@ import 'fake-indexeddb/auto'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { inventoryDb } from '../src/services/database.ts'
-import { deleteOnlyOrders, emptyOnlyOrderLine, updateOnlyOrderLine, parseOnlyOrderLines, saveOnlyOrder, onlyOrderReceiptItems, isOnlyOrder, onlyOrderNumber } from '../src/services/onlyOrders.ts'
+import { deleteOnlyOrders, draftsFromReadList, emptyOnlyOrderLine, updateOnlyOrderLine, validateOnlyOrderDraftLine, parseOnlyOrderLines, saveOnlyOrder, onlyOrderReceiptItems, isOnlyOrder, onlyOrderNumber } from '../src/services/onlyOrders.ts'
+
+test('read-list rows become review drafts with blank prices and explicit assumed quantities', () => {
+  const drafts = draftsFromReadList([
+    { productName: 'బియ్యం', volume: '5 kg', quantity: 1, quantityAssumed: true },
+    { productName: 'Milk', volume: '', quantity: 1.5, quantityAssumed: false },
+  ])
+  assert.equal(drafts[0].quantity, '1')
+  assert.equal(drafts[0].quantityAssumed, true)
+  assert.equal(drafts[0].volume, '5 kg')
+  assert.equal(drafts[0].price, '')
+  assert.equal(drafts[0].total, '')
+  assert.equal(drafts[1].quantity, '1.5')
+  assert.equal(drafts[1].quantityAssumed, false)
+  assert.doesNotThrow(() => validateOnlyOrderDraftLine(drafts[0]))
+  assert.throws(() => parseOnlyOrderLines(drafts), /Price and Total/)
+  assert.equal(updateOnlyOrderLine(drafts[0], 'quantity', '2').quantityAssumed, false)
+})
 
 test('price and total derive each other; positive decimal quantities are accepted', () => {
   assert.equal(onlyOrderNumber('SMKG-ONLY-000012'), 'OR 12')
