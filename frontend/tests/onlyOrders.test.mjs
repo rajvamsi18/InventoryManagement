@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { inventoryDb } from '../src/services/database.ts'
-import { deleteOnlyOrders, draftsFromReadList, emptyOnlyOrderLine, updateOnlyOrderLine, validateOnlyOrderDraftLine, parseOnlyOrderLines, saveOnlyOrder, onlyOrderReceiptItems, isOnlyOrder, onlyOrderNumber } from '../src/services/onlyOrders.ts'
+import { appendReadListDrafts, deleteOnlyOrders, draftsFromReadList, emptyOnlyOrderLine, updateOnlyOrderLine, validateOnlyOrderDraftLine, parseOnlyOrderLines, saveOnlyOrder, onlyOrderReceiptItems, isOnlyOrder, onlyOrderNumber } from '../src/services/onlyOrders.ts'
 
 test('read-list rows become review drafts with blank prices and explicit assumed quantities', () => {
   const drafts = draftsFromReadList([
@@ -19,6 +19,23 @@ test('read-list rows become review drafts with blank prices and explicit assumed
   assert.doesNotThrow(() => validateOnlyOrderDraftLine(drafts[0]))
   assert.throws(() => parseOnlyOrderLines(drafts), /Price and Total/)
   assert.equal(updateOnlyOrderLine(drafts[0], 'quantity', '2').quantityAssumed, false)
+})
+
+test('a second read-list appends rows without replacing existing edits or prices', () => {
+  const priced = { ...emptyOnlyOrderLine(), productName: 'Rice', quantity: '2', price: '10', total: '20' }
+  const partiallyEntered = { ...emptyOnlyOrderLine(), productName: 'Coffee', quantity: '1' }
+  const appended = appendReadListDrafts([priced, partiallyEntered, emptyOnlyOrderLine()], [
+    { productName: 'Milk', volume: '1 litre', quantity: 1, quantityAssumed: true },
+  ])
+
+  assert.equal(appended.length, 3)
+  assert.equal(appended[0].productName, 'Rice')
+  assert.equal(appended[0].price, '10')
+  assert.equal(appended[1].productName, 'Coffee')
+  assert.equal(appended[2].productName, 'Milk')
+  assert.equal(appended[2].volume, '1 litre')
+  assert.equal(appended[2].price, '')
+  assert.equal(appended[2].quantityAssumed, true)
 })
 
 test('price and total derive each other; positive decimal quantities are accepted', () => {

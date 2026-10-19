@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, Check, Clipboard, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { inventoryDb, type OnlyOrder } from '../services/database'
-import { deleteOnlyOrders, draftsFromReadList, emptyOnlyOrderLine, onlyOrderNumber, onlyOrderReceiptItems, saveOnlyOrder, updateOnlyOrderLine, type OnlyOrderDraft } from '../services/onlyOrders'
+import { appendReadListDrafts, deleteOnlyOrders, draftsFromReadList, emptyOnlyOrderLine, onlyOrderNumber, onlyOrderReceiptItems, saveOnlyOrder, updateOnlyOrderLine, type OnlyOrderDraft } from '../services/onlyOrders'
 import { readWhatsAppList } from '../services/readWhatsAppList'
 import { OrderReceipt } from './OrderReceipt'
 import { OrderHistoryHeader } from './OrderHistoryHeader'
@@ -33,7 +33,8 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
   const [readListText, setReadListText] = useState(() => sharedMessage ?? '')
   const [readingList, setReadingList] = useState(false)
   const [readListError, setReadListError] = useState('')
-  const [sourceMessage, setSourceMessage] = useState('')
+  const [sourceMessages, setSourceMessages] = useState<string[]>([])
+  const [appendToDraft, setAppendToDraft] = useState(false)
   const readListDialogRef = useRef<HTMLDialogElement>(null)
   const selected = orders.find(order => order.id === selectedId)
   const selectedOrders = orders.filter(order => selectedOrderIds.includes(order.id))
@@ -47,7 +48,7 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
 
   function edit(order: OnlyOrder) {
     setSelectedOrderIds([])
-    setSourceMessage('')
+    setSourceMessages([])
     setEditingId(order.id)
     setLines(order.items.map(item => ({ id: item.id, productName: item.productName, volume: item.volume, quantity: String(item.quantity), price: String(item.price), total: String(item.total) })))
     setError('')
@@ -114,8 +115,16 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
     }
   }
 
+  function openReadList(append = false) {
+    setReadListText('')
+    setReadListError('')
+    setAppendToDraft(append)
+    setReadListOpen(true)
+  }
+
   function closeReadList() {
     setReadListOpen(false)
+    setAppendToDraft(false)
     onSharedMessageConsumed?.()
   }
 
@@ -126,10 +135,16 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
     setReadListError('')
     try {
       const items = await readWhatsAppList(readListText)
-      setLines(draftsFromReadList(items))
-      setSourceMessage(readListText.trim())
-      setEditingId(undefined)
-      setSelectedOrderIds([])
+      const message = readListText.trim()
+      if (appendToDraft) {
+        setLines(current => appendReadListDrafts(current, items))
+        setSourceMessages(current => [...current, message])
+      } else {
+        setLines(draftsFromReadList(items))
+        setSourceMessages([message])
+        setEditingId(undefined)
+        setSelectedOrderIds([])
+      }
       setError('')
       setMode('edit')
       closeReadList()
@@ -154,7 +169,7 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
     </header>
     <dialog ref={readListDialogRef} className="read-list-dialog" aria-labelledby="read-list-title" onCancel={closeReadList} onClose={closeReadList}>
       <form onSubmit={event => void submitReadList(event)}>
-        <header><div><p className="eyebrow">Only Order</p><h2 id="read-list-title">Read WhatsApp list</h2></div>
+        <header><div><p className="eyebrow">Only Order</p><h2 id="read-list-title">{appendToDraft ? 'Add message to order' : 'Read WhatsApp list'}</h2></div>
           <button type="button" className="icon-button" title="Close Read List" aria-label="Close Read List" disabled={readingList} onClick={closeReadList}><X size={20} /></button>
         </header>
         <div className="read-list-content">
@@ -164,15 +179,16 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
           {readListError && <p role="alert" className="voice-error">{readListError}</p>}
         </div>
         <footer><button type="button" className="back-button" disabled={readingList} onClick={closeReadList}>Cancel</button>
-          <button type="submit" className="save-button" disabled={readingList || !readListText.trim()}><Check size={17} /> {readingList ? 'Reading list...' : 'Read list'}</button>
+          <button type="submit" className="save-button" disabled={readingList || !readListText.trim()}><Check size={17} /> {readingList ? 'Reading list...' : appendToDraft ? 'Add to order' : 'Read list'}</button>
         </footer>
       </form>
     </dialog>
     {error && <p role="alert" className="voice-error">{error}</p>}
-    {mode === 'edit' && sourceMessage && <details className="only-order-source">
-      <summary>Compare with original WhatsApp message</summary>
-      <pre>{sourceMessage}</pre>
+    {mode === 'edit' && sourceMessages.length > 0 && <details className="only-order-source">
+      <summary>Compare with original WhatsApp message{sourceMessages.length > 1 ? `s (${sourceMessages.length})` : ''}</summary>
+      {sourceMessages.map((message, index) => <pre key={`${index}-${message}`}>{sourceMessages.length > 1 ? `Message ${index + 1}\n${message}` : message}</pre>)}
     </details>}
+    {mode === 'edit' && <div className="only-order-import-action"><button type="button" className="read-list-button" disabled={saving} onClick={() => openReadList(true)}><Plus size={16} /> Add another message</button></div>}
     {mode === 'edit' && (isMobile ? <MobileOnlyOrderEditor lines={lines} onChange={setLines} onSubmit={(event, drafts) => void submit(event, drafts)} saving={saving} editing={Boolean(editingId)} onCancel={() => { if (window.confirm('Discard unsaved order changes?')) { setMode('list'); setError('') } }} /> : <form onSubmit={event => void submit(event)} className="only-order-form">
       <fieldset disabled={saving}>
         {lines.map((line, index) => <div className="only-order-line" key={line.id}>
@@ -193,7 +209,7 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
     {mode === 'list' && <>
       <section className="metrics"><div><span>Orders</span><strong>{orders.length}</strong></div><div><span>Average order</span><strong>{currency(orders.length ? orders.reduce((sum, order) => sum + order.totalAmount, 0) / orders.length : 0)}</strong></div><div><span>Total amount</span><strong>{currency(orders.reduce((sum, order) => sum + order.totalAmount, 0))}</strong></div></section>
       <section className="orders-layout"><div className="panel">
-        <OrderHistoryHeader mode="only" onSelectMode={next => { if (next === 'inventory' && !deleting) onBack() }} onReadList={() => { setReadListText(''); setReadListError(''); setReadListOpen(true) }} onNewOrder={() => { if (deleting) return; setSelectedOrderIds([]); setEditingId(undefined); setSourceMessage(''); setLines([emptyOnlyOrderLine()]); setError(''); setMode('edit') }} />
+        <OrderHistoryHeader mode="only" onSelectMode={next => { if (next === 'inventory' && !deleting) onBack() }} onReadList={() => openReadList()} onNewOrder={() => { if (deleting) return; setSelectedOrderIds([]); setEditingId(undefined); setSourceMessages([]); setLines([emptyOnlyOrderLine()]); setError(''); setMode('edit') }} />
         {!selectedOrders.length && orders.length > 0 && <p className="selection-hint">Tap an order for details · Long press to select</p>}
         {orders.length ? <div className={`orders-table ${selectedOrders.length ? 'selection-mode' : ''}`}>
           <div className="orders-table-header">

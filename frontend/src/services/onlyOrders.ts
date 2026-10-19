@@ -33,6 +33,11 @@ export function draftsFromReadList(items: ReadListItem[]): OnlyOrderDraft[] {
   }))
 }
 
+export function appendReadListDrafts(current: OnlyOrderDraft[], items: ReadListItem[]): OnlyOrderDraft[] {
+  const entered = current.filter(line => line.productName.trim() || line.volume.trim() || line.price !== '' || line.total !== '' || line.quantity !== '1')
+  return [...entered, ...draftsFromReadList(items)]
+}
+
 const money = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
 
 export function updateOnlyOrderLine(line: OnlyOrderDraft, field: keyof OnlyOrderDraft, value: string): OnlyOrderDraft {
