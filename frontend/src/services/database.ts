@@ -88,9 +88,13 @@ export type OnlyOrderLine = {
   quantity: number
   price: number
   total: number
+  quantityAssumed?: boolean
+  sourceMessageId?: string
 }
 
-export type OnlyOrder = SalesOrder & { items: OnlyOrderLine[] }
+export type OnlyOrderSourceMessage = { id: string; text: string }
+
+export type OnlyOrder = SalesOrder & { items: OnlyOrderLine[]; sourceMessages?: OnlyOrderSourceMessage[] }
 
 export type ProductCategoryOption = {
   id: string

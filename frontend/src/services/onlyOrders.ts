@@ -1,4 +1,4 @@
-import type { inventoryDb, OnlyOrder, OnlyOrderLine, SalesOrderItem } from './database'
+import type { inventoryDb, OnlyOrder, OnlyOrderLine, OnlyOrderSourceMessage, SalesOrderItem } from './database'
 
 export type OnlyOrderDraft = {
   id: string
@@ -8,6 +8,7 @@ export type OnlyOrderDraft = {
   price: string
   total: string
   quantityAssumed?: boolean
+  sourceMessageId?: string
 }
 
 export type ReadListItem = {
@@ -21,21 +22,62 @@ export function emptyOnlyOrderLine(): OnlyOrderDraft {
   return { id: crypto.randomUUID(), productName: '', volume: '', quantity: '1', price: '', total: '' }
 }
 
-export function draftsFromReadList(items: ReadListItem[]): OnlyOrderDraft[] {
+export function draftsFromReadList(items: ReadListItem[], sourceMessageId?: string): OnlyOrderDraft[] {
   return items.map(item => ({
     ...emptyOnlyOrderLine(),
     productName: item.productName,
     volume: item.volume,
     quantity: String(item.quantity),
     quantityAssumed: item.quantityAssumed,
+    sourceMessageId,
     price: '',
     total: '',
   }))
 }
 
-export function appendReadListDrafts(current: OnlyOrderDraft[], items: ReadListItem[]): OnlyOrderDraft[] {
+export function appendReadListDrafts(current: OnlyOrderDraft[], items: ReadListItem[], sourceMessageId?: string): OnlyOrderDraft[] {
   const entered = current.filter(line => line.productName.trim() || line.volume.trim() || line.price !== '' || line.total !== '' || line.quantity !== '1')
-  return [...entered, ...draftsFromReadList(items)]
+  return [...entered, ...draftsFromReadList(items, sourceMessageId)]
+}
+
+function normalizedLabel(value: string): string {
+  return value.normalize('NFKC').trim().toLocaleLowerCase().replace(/\s+/g, ' ')
+}
+
+export function hasDuplicateReadListMessage(messages: OnlyOrderSourceMessage[], text: string, excludeId?: string): boolean {
+  const normalized = normalizedLabel(text)
+  return Boolean(normalized) && messages.some(message => message.id !== excludeId && normalizedLabel(message.text) === normalized)
+}
+
+function productIdentity(line: Pick<OnlyOrderDraft, 'productName' | 'volume'>): string {
+  return `${normalizedLabel(line.productName)}\u0000${normalizedLabel(line.volume)}`
+}
+
+export function replaceReadListDrafts(current: OnlyOrderDraft[], sourceMessageId: string, items: ReadListItem[]): OnlyOrderDraft[] {
+  const oldLines = current.filter(line => line.sourceMessageId === sourceMessageId)
+  const firstSourceIndex = current.findIndex(line => line.sourceMessageId === sourceMessageId)
+  const insertionIndex = firstSourceIndex < 0
+    ? current.length
+    : current.slice(0, firstSourceIndex).filter(line => line.sourceMessageId !== sourceMessageId).length
+  const remaining = current.filter(line => line.sourceMessageId !== sourceMessageId)
+  const unmatched = new Set(oldLines)
+  const replacements = draftsFromReadList(items, sourceMessageId).map(line => {
+    const previous = oldLines.find(candidate => unmatched.has(candidate) && productIdentity(candidate) === productIdentity(line))
+    if (!previous) return line
+    unmatched.delete(previous)
+    return {
+      ...updateOnlyOrderLine(previous, 'quantity', line.quantity),
+      productName: line.productName,
+      volume: line.volume,
+      quantityAssumed: line.quantityAssumed,
+      sourceMessageId,
+    }
+  })
+  return [...remaining.slice(0, insertionIndex), ...replacements, ...remaining.slice(insertionIndex)]
+}
+
+export function removeReadListDrafts(current: OnlyOrderDraft[], sourceMessageId: string): OnlyOrderDraft[] {
+  return current.filter(line => line.sourceMessageId !== sourceMessageId)
 }
 
 const money = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
@@ -69,7 +111,7 @@ export function parseOnlyOrderLines(drafts: OnlyOrderDraft[]): OnlyOrderLine[] {
       throw new Error('Price and Total must be non-negative numbers.')
     }
     if (money(quantity * price) !== money(total)) throw new Error('Check Price and Total for every row.')
-    return { id: line.id, productName: line.productName.trim(), volume: line.volume.trim(), quantity, price, total: money(total) }
+    return { id: line.id, productName: line.productName.trim(), volume: line.volume.trim(), quantity, price, total: money(total), quantityAssumed: line.quantityAssumed, sourceMessageId: line.sourceMessageId }
   })
 }
 
@@ -78,7 +120,7 @@ export function onlyOrderNumber(value: string): string {
   return Number.isSafeInteger(sequence) && sequence > 0 ? `OR ${sequence}` : value
 }
 
-export async function saveOnlyOrder(db: typeof inventoryDb, drafts: OnlyOrderDraft[], orderId?: string): Promise<OnlyOrder> {
+export async function saveOnlyOrder(db: typeof inventoryDb, drafts: OnlyOrderDraft[], orderId?: string, sourceMessages?: OnlyOrderSourceMessage[]): Promise<OnlyOrder> {
   const items = parseOnlyOrderLines(drafts)
   return db.transaction('rw', db.onlyOrders, async () => {
     const existing = orderId ? await db.onlyOrders.get(orderId) : undefined
@@ -93,6 +135,7 @@ export async function saveOnlyOrder(db: typeof inventoryDb, drafts: OnlyOrderDra
       updatedAt: now,
       totalAmount: money(items.reduce((sum, item) => sum + item.total, 0)),
       items,
+      sourceMessages: sourceMessages ?? existing?.sourceMessages,
     }
     await db.onlyOrders.put(order)
     return order
@@ -120,12 +163,18 @@ export function isOnlyOrder(value: unknown): value is OnlyOrder {
     !Number.isFinite(Date.parse(order.createdAt)) || !Number.isFinite(Date.parse(order.updatedAt)) ||
     typeof order.totalAmount !== 'number' || !Number.isFinite(order.totalAmount) || order.totalAmount < 0 ||
     !Array.isArray(order.items) || !order.items.length) return false
+  if (order.sourceMessages !== undefined && (!Array.isArray(order.sourceMessages) ||
+    !order.sourceMessages.every(message => message && typeof message.id === 'string' && message.id.trim() && typeof message.text === 'string' && message.text.trim()) ||
+    new Set(order.sourceMessages.map(message => message.id)).size !== order.sourceMessages.length)) return false
+  const sourceMessageIds = new Set((order.sourceMessages ?? []).map(message => message.id))
   if (!order.items.every(item => item && typeof item.id === 'string' &&
     typeof item.productName === 'string' && item.productName.trim() &&
     typeof item.volume === 'string' &&
     Number.isFinite(item.quantity) && item.quantity > 0 &&
     typeof item.price === 'number' && Number.isFinite(item.price) && item.price >= 0 &&
     typeof item.total === 'number' && Number.isFinite(item.total) && item.total >= 0 &&
+    (item.quantityAssumed === undefined || typeof item.quantityAssumed === 'boolean') &&
+    (item.sourceMessageId === undefined || (typeof item.sourceMessageId === 'string' && sourceMessageIds.has(item.sourceMessageId))) &&
     money(item.quantity * item.price) === money(item.total))) return false
   return money(order.items.reduce((sum, item) => sum + item.total, 0)) === money(order.totalAmount)
 }

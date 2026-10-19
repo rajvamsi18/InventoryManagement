@@ -39,6 +39,10 @@
 .only-order-source { margin: 0 0 16px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .only-order-import-action { display: flex; margin: 0 0 14px; }
 .only-order-source summary { padding: 12px 2px; color: var(--pine-dark); font-size: 12px; font-weight: 700; cursor: pointer; }
+.only-order-source-note { margin: 0 0 10px; color: var(--muted); font-size: 11px; }
+.only-order-source-message { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.only-order-source-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.delete-source-message { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; border: 1px solid #b74c35; border-radius: 5px; padding: 9px 12px; color: #fff; background: #b74c35; font-size: 12px; font-weight: 700; }
 .only-order-source pre { max-height: 220px; overflow: auto; margin: 0 0 14px; padding: 12px; border-left: 3px solid var(--gold); color: var(--ink); background: #f5f7f1; font: inherit; font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 700px) { .order-history-actions { gap: 6px; }.order-history-actions button { padding: 9px 10px; font-size: 11px; }.read-list-dialog { position: fixed; inset: auto 0 0; margin: 0; width: 100%; max-width: none; max-height: 88dvh; border-right: 0; border-bottom: 0; border-left: 0; border-radius: 8px 8px 0 0; }.read-list-dialog header, .read-list-content { padding-right: 16px; padding-left: 16px; }.read-list-dialog footer { padding-right: 16px; padding-left: 16px; } }
 .mobile-product-sheet header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; border-bottom: 1px solid var(--line); }
