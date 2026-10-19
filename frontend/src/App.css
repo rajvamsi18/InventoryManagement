@@ -132,7 +132,7 @@
 .order-row > span { display: grid; gap: 3px; color: var(--ink); }
 .order-row > span small { color: var(--muted); }
 .selected-order-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
-.selection-hint { display: block !important; margin: -8px 0 12px !important; padding: 0 !important; border: 0 !important; color: var(--muted) !important; font-size: 10px !important; }
+.selection-hint { display: block !important; margin: 8px 0 12px !important; padding: 0 !important; border: 0 !important; color: var(--muted) !important; font-size: 10px !important; line-height: 1.4; }
 .selected-order-actions > span { color: var(--muted); font-size: 12px; font-weight: 700; }
 .selected-order-actions > div { display: flex; gap: 8px; }
 .selected-order-actions button { border-radius: 5px; padding: 9px 14px; font-size: 12px; font-weight: 700; }
