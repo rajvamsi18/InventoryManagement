@@ -55,6 +55,10 @@ test('read-list returns only Only Order fields and marks an assumed quantity', a
   assert.match(calls.prompt, /Do not invent products or infer prices/)
   assert.match(calls.prompt, /Include every distinct requested product/)
   assert.match(calls.prompt, /must return two items/)
+  assert.match(calls.prompt, /Big plastic bags 3/)
+  assert.match(calls.prompt, /omit the size word from productName/)
+  assert.match(calls.prompt, /Big plastic bags 3/)
+  assert.match(calls.prompt, /put that size in volume/)
   assert.equal(calls.limit, 1)
 })
 

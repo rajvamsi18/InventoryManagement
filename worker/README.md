@@ -15,7 +15,8 @@ product name, optional volume, quantity, and whether quantity `1` was assumed. I
 does not receive inventory records or prices. No AI inference request is made until
 the user chooses Read list, and no order is saved until the user submits it. The
 original message remains available beside the extracted draft so missed lines can
-be caught during review. The model request enables Workers AI JSON mode to reduce
+be caught during review. Clear size modifiers such as big, medium, or small are
+requested as Volume rather than part of the product name. The model request enables Workers AI JSON mode to reduce
 malformed extraction responses.
 
 The route limits messages to 10,000 characters and applies a best-effort limit of
