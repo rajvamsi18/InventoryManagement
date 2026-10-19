@@ -10,10 +10,12 @@ Worker keeps the Sarvam API key out of the browser, and provides the AI endpoint
 used to convert a WhatsApp message into reviewable Only Order draft lines.
 
 Workers AI is configured as an `AI` binding. The `/read-list` endpoint uses
-`@cf/google/gemma-3-12b-it`; it receives only the pasted/shared message and returns
+`@cf/qwen/qwen3-30b-a3b-fp8`; it receives only the pasted/shared message and returns
 product name, optional volume, quantity, and whether quantity `1` was assumed. It
 does not receive inventory records or prices. No AI inference request is made until
-the user chooses Read list, and no order is saved until the user submits it.
+the user chooses Read list, and no order is saved until the user submits it. The
+original message remains available beside the extracted draft so missed lines can
+be caught during review.
 
 The route limits messages to 10,000 characters and applies a best-effort limit of
 12 requests per minute per source IP and Cloudflare location. Workers AI's free

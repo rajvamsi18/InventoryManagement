@@ -33,6 +33,7 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
   const [readListText, setReadListText] = useState(() => sharedMessage ?? '')
   const [readingList, setReadingList] = useState(false)
   const [readListError, setReadListError] = useState('')
+  const [sourceMessage, setSourceMessage] = useState('')
   const readListDialogRef = useRef<HTMLDialogElement>(null)
   const selected = orders.find(order => order.id === selectedId)
   const selectedOrders = orders.filter(order => selectedOrderIds.includes(order.id))
@@ -46,6 +47,7 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
 
   function edit(order: OnlyOrder) {
     setSelectedOrderIds([])
+    setSourceMessage('')
     setEditingId(order.id)
     setLines(order.items.map(item => ({ id: item.id, productName: item.productName, volume: item.volume, quantity: String(item.quantity), price: String(item.price), total: String(item.total) })))
     setError('')
@@ -125,6 +127,7 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
     try {
       const items = await readWhatsAppList(readListText)
       setLines(draftsFromReadList(items))
+      setSourceMessage(readListText.trim())
       setEditingId(undefined)
       setSelectedOrderIds([])
       setError('')
@@ -166,6 +169,10 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
       </form>
     </dialog>
     {error && <p role="alert" className="voice-error">{error}</p>}
+    {mode === 'edit' && sourceMessage && <details className="only-order-source">
+      <summary>Compare with original WhatsApp message</summary>
+      <pre>{sourceMessage}</pre>
+    </details>}
     {mode === 'edit' && (isMobile ? <MobileOnlyOrderEditor lines={lines} onChange={setLines} onSubmit={(event, drafts) => void submit(event, drafts)} saving={saving} editing={Boolean(editingId)} onCancel={() => { if (window.confirm('Discard unsaved order changes?')) { setMode('list'); setError('') } }} /> : <form onSubmit={event => void submit(event)} className="only-order-form">
       <fieldset disabled={saving}>
         {lines.map((line, index) => <div className="only-order-line" key={line.id}>
@@ -186,7 +193,7 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
     {mode === 'list' && <>
       <section className="metrics"><div><span>Orders</span><strong>{orders.length}</strong></div><div><span>Average order</span><strong>{currency(orders.length ? orders.reduce((sum, order) => sum + order.totalAmount, 0) / orders.length : 0)}</strong></div><div><span>Total amount</span><strong>{currency(orders.reduce((sum, order) => sum + order.totalAmount, 0))}</strong></div></section>
       <section className="orders-layout"><div className="panel">
-        <OrderHistoryHeader mode="only" onSelectMode={next => { if (next === 'inventory' && !deleting) onBack() }} onReadList={() => { setReadListText(''); setReadListError(''); setReadListOpen(true) }} onNewOrder={() => { if (deleting) return; setSelectedOrderIds([]); setEditingId(undefined); setLines([emptyOnlyOrderLine()]); setError(''); setMode('edit') }} />
+        <OrderHistoryHeader mode="only" onSelectMode={next => { if (next === 'inventory' && !deleting) onBack() }} onReadList={() => { setReadListText(''); setReadListError(''); setReadListOpen(true) }} onNewOrder={() => { if (deleting) return; setSelectedOrderIds([]); setEditingId(undefined); setSourceMessage(''); setLines([emptyOnlyOrderLine()]); setError(''); setMode('edit') }} />
         {!selectedOrders.length && orders.length > 0 && <p className="selection-hint">Tap an order for details · Long press to select</p>}
         {orders.length ? <div className={`orders-table ${selectedOrders.length ? 'selection-mode' : ''}`}>
           <div className="orders-table-header">
