@@ -58,3 +58,5 @@ logs/
 # Dependencies lock (for Python)
 poetry.lock
 Pipfile.lock
+docs/PERSONAL_GITHUB_SETUP.md
+.wrangler/
