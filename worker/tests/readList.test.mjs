@@ -9,7 +9,7 @@ function createEnv({ modelResponse, modelEnvelope, limited = false } = {}) {
   return {
     calls,
     env: {
-      ALLOWED_ORIGIN: origin,
+      ALLOWED_ORIGIN: `${origin},http://localhost:5173,http://127.0.0.1:5173`,
       AI: {
         async run(model, input) {
           calls.model += 1
@@ -37,6 +37,18 @@ function post(body, headers = {}) {
     body: JSON.stringify(body),
   })
 }
+
+test('preflight allows the production and local frontend origins', async () => {
+  const { env } = createEnv()
+  for (const requestOrigin of [origin, 'http://localhost:5173', 'http://127.0.0.1:5173']) {
+    const response = await worker.fetch(new Request('https://worker.example/read-list', {
+      method: 'OPTIONS',
+      headers: { Origin: requestOrigin, 'Access-Control-Request-Method': 'POST' },
+    }), env)
+    assert.equal(response.status, 200)
+    assert.equal(response.headers.get('access-control-allow-origin'), requestOrigin)
+  }
+})
 
 test('read-list returns only Only Order fields and marks an assumed quantity', async () => {
   const { env, calls } = createEnv()

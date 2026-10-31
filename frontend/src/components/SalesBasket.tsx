@@ -9,6 +9,8 @@ type Props = {
   products: Product[]
   categories: string[]
   lines: BasketLine[]
+  customerName: string
+  onCustomerNameChange: (value: string) => void
   orderNumber: string
   isEditing: boolean
   soldCounts: Record<string, number>
@@ -24,7 +26,7 @@ type Props = {
 const currency = (amount: number) => `Rs. ${amount.toFixed(2)}`
 const quantity = (value: number) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 3 }).format(value)
 
-export function SalesBasket({ products, categories, lines, orderNumber, isEditing, soldCounts, onAdd, onChange, onRemove, onAddNewProduct, onCancel, onDiscard, onSubmit }: Props) {
+export function SalesBasket({ products, categories, lines, customerName, onCustomerNameChange, orderNumber, isEditing, soldCounts, onAdd, onChange, onRemove, onAddNewProduct, onCancel, onDiscard, onSubmit }: Props) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [page, setPage] = useState(1)
@@ -38,7 +40,7 @@ export function SalesBasket({ products, categories, lines, orderNumber, isEditin
   const total = lines.reduce((sum, line) => sum + line.quantity * line.price, 0)
 
   return <section className="basket-page">
-    <header className="page-heading basket-heading"><div><div className="basket-nav-actions"><button className="back-button" onClick={onCancel}><ArrowLeft size={15} /> Back to orders</button><button className="cancel-order-button" onClick={onDiscard}>Cancel order</button></div><p className="eyebrow">Order number</p><h1>{orderNumber}</h1></div><button className="primary-button" onClick={() => onAddNewProduct()}><Plus size={16} /> New product</button></header>
+    <header className="page-heading basket-heading"><div><div className="basket-nav-actions"><button className="back-button" onClick={onCancel}><ArrowLeft size={15} /> Orders</button><button className="cancel-order-button" onClick={onDiscard}>Cancel order</button></div><p className="eyebrow">Order number</p><h1 className="order-number-heading">{orderNumber}{customerName.trim() && <span className="customer-name-highlight">Customer: {customerName.trim()}</span>}</h1><label className="order-customer-input">Customer name (optional)<input maxLength={120} value={customerName} onChange={event => onCustomerNameChange(event.target.value)} /></label></div><button className="primary-button" onClick={() => onAddNewProduct()}><Plus size={16} /> New product</button></header>
     <div className="basket-layout"><section className="panel basket-catalog"><div className="catalog-tools"><label><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, brand, MRP, size, category, unit" /></label><select value={category} onChange={(event) => setCategory(event.target.value)}><option value="All">All categories</option>{categories.map((item) => <option key={item}>{item}</option>)}</select></div>
       <VoiceOrderAssistant products={products} onConfirm={(productId, quantity) => onAdd(productId, quantity)} onAddNewProduct={(prefill) => onAddNewProduct(prefill)} />
       <p className="basket-results-label">{isSearching ? `${matchingProducts.length} matching products` : 'Top 4 most sold products'}</p><div className="basket-product-grid">{available.length ? available.map((product) => { const line = lines.find((item) => item.productId === product.id); return <article className="basket-product" key={product.id}>{product.imageDataUrl ? <img src={product.imageDataUrl} alt="" /> : <span className="product-monogram">{(product.brand || product.name).slice(0, 2).toUpperCase()}</span>}<div><small>{product.brand || 'Unbranded'} · {product.category}</small><strong>{product.name}</strong><span>{product.measurementValue} {product.unit} · {product.packageType}</span><em>{currency(product.sellingPrice ?? product.price ?? 0)} · {quantity(product.quantity)} in stock</em></div><button disabled={Boolean(line)} onClick={() => onAdd(product.id)}>{line ? 'In basket' : 'Add to basket'}</button></article> }) : <div className="empty-state"><p>No matching products.</p><button className="add-product-link" onClick={() => onAddNewProduct()}><Plus size={16} /> Add new product</button></div>}</div>

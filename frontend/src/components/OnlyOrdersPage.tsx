@@ -6,10 +6,13 @@ import { appendReadListDrafts, deleteOnlyOrders, draftsFromReadList, emptyOnlyOr
 import { readWhatsAppList } from '../services/readWhatsAppList'
 import { OrderReceipt } from './OrderReceipt'
 import { OrderHistoryHeader } from './OrderHistoryHeader'
+import { OrderHistoryPagination } from './OrderHistoryPagination'
+import { OrderHistorySearch } from './OrderHistorySearch'
+import { matchesOrderSearch } from '../services/orderSearch'
 import { OrderRow } from './OrderRow'
 import { MobileOnlyOrderEditor } from './MobileOnlyOrderEditor'
 
-type Props = { onBack: () => void; sharedMessage?: string; onSharedMessageConsumed?: () => void }
+type Props = { onBack: () => void; sharedMessage?: string; onSharedMessageConsumed?: () => void; openChooser?: boolean; onChooserOpened?: () => void }
 const currency = (amount: number) => `Rs. ${amount.toFixed(2)}`
 const mobileQuery = '(max-width: 700px)'
 function subscribeMobile(callback: () => void) {
@@ -18,10 +21,15 @@ function subscribeMobile(callback: () => void) {
   return () => media.removeEventListener('change', callback)
 }
 
-export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed }: Props) {
+export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed, openChooser = false, onChooserOpened }: Props) {
   const isMobile = useSyncExternalStore(subscribeMobile, () => window.matchMedia(mobileQuery).matches, () => false)
   const orders = useLiveQuery(async () => (await inventoryDb.onlyOrders.orderBy('soldAt').reverse().toArray()).map(order => ({ ...order, orderNumber: onlyOrderNumber(order.orderNumber) })), []) ?? []
   const [mode, setMode] = useState<'list' | 'edit' | 'detail'>('list')
+  const [customerName, setCustomerName] = useState('')
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [orderSearch, setOrderSearch] = useState('')
+  const [historyPage, setHistoryPage] = useState(1)
+  const [historyPageSize, setHistoryPageSize] = useState<5 | 10 | 20>(5)
   const [selectedId, setSelectedId] = useState<string>()
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
   const [deleting, setDeleting] = useState(false)
@@ -39,6 +47,11 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
   const readListDialogRef = useRef<HTMLDialogElement>(null)
   const selected = orders.find(order => order.id === selectedId)
   const selectedOrders = orders.filter(order => selectedOrderIds.includes(order.id))
+  const filteredOrders = orders.filter(order => matchesOrderSearch(order, orderSearch))
+  const historyPageCount = Math.max(1, Math.ceil(filteredOrders.length / historyPageSize))
+  const visibleHistoryPage = Math.min(historyPage, historyPageCount)
+  const visibleOrders = filteredOrders.slice((visibleHistoryPage - 1) * historyPageSize, visibleHistoryPage * historyPageSize)
+  const nextOrderNumber = `OR ${orders.reduce((highest, order) => Math.max(highest, Number(order.orderNumber.match(/(\d+)$/)?.[1] ?? 0)), 0) + 1}`
   const total = lines.reduce((sum, line) => sum + (Number(line.total) || 0), 0)
 
   useEffect(() => {
@@ -50,6 +63,7 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
   function edit(order: OnlyOrder) {
     setSelectedOrderIds([])
     setSourceMessages(order.sourceMessages ?? [])
+    setCustomerName(order.customerName ?? '')
     setEditingId(order.id)
     setLines(order.items.map(item => ({ id: item.id, productName: item.productName, volume: item.volume, quantity: String(item.quantity), price: String(item.price), total: String(item.total), quantityAssumed: item.quantityAssumed, sourceMessageId: item.sourceMessageId })))
     setError('')
@@ -95,7 +109,7 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
     setSaving(true)
     setError('')
     try {
-      const order = await saveOnlyOrder(inventoryDb, drafts, editingId, sourceMessages)
+      const order = await saveOnlyOrder(inventoryDb, drafts, editingId, sourceMessages, customerName)
       setSelectedId(order.id)
       setEditingId(undefined)
       setMode('detail')
@@ -135,7 +149,7 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
     if (!window.confirm('Delete this message and the product lines extracted from it?')) return
     const remainingLines = removeReadListDrafts(lines, message.id)
     if (!remainingLines.some(line => line.productName.trim())) {
-      setError('Keep at least one product in the order. To remove the entire order, cancel and delete it from Order History.')
+      setError('Keep at least one product in the order. To remove the entire order, cancel and delete it from All Orders.')
       return
     }
     setLines(remainingLines)
@@ -176,19 +190,19 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
   }
 
   return <section className="only-orders-page">
-    <header className={`page-heading ${mode === 'detail' ? 'only-order-detail-heading' : ''}`}>
+    <header className={`page-heading ${mode === 'detail' ? 'only-order-detail-heading' : mode === 'edit' ? 'only-order-edit-heading' : ''}`}>
       <div>
         {mode !== 'list' && <button type="button" className="back-button" disabled={saving} onClick={() => {
           if (mode !== 'edit' || window.confirm('Discard unsaved order changes?')) { setMode('list'); setError('') }
-        }}><ArrowLeft size={16} /> Back to Only Order</button>}
-        <p className="eyebrow">{mode === 'list' ? 'Point of sale' : 'Only Order'}</p>
-        <h1>{mode === 'edit' ? editingId ? 'Edit order' : 'New order' : selected && mode === 'detail' ? selected.orderNumber : 'Orders'}</h1>
+        }}><ArrowLeft size={16} /> Orders</button>}
+        <h1 className={mode === 'edit' || mode === 'detail' ? 'order-number-heading' : undefined}>{mode === 'edit' ? orders.find(order => order.id === editingId)?.orderNumber ?? nextOrderNumber : selected && mode === 'detail' ? selected.orderNumber : 'Orders'}{mode === 'edit' && customerName.trim() && <span className="customer-name-highlight">Customer: {customerName.trim()}</span>}{mode === 'detail' && selected?.customerName?.trim() && <span className="customer-name-highlight">Customer: {selected.customerName.trim()}</span>}</h1>
       </div>
       {selected && mode === 'detail' && <div className="only-order-detail-actions">
         <button type="button" className="primary-button" disabled={deleting} onClick={() => edit(selected)}><Pencil size={15} /> Edit order</button>
         <button type="button" className="icon-button" title="Delete order" aria-label="Delete order" disabled={deleting} onClick={() => void remove(selected)}><Trash2 size={17} /></button>
       </div>}
     </header>
+    {mode === 'edit' && <div className="order-customer-input only-order-customer-input"><label htmlFor="only-order-customer-name">Customer name (optional)</label><input id="only-order-customer-name" maxLength={120} value={customerName} onChange={event => setCustomerName(event.target.value)} disabled={saving} /></div>}
     <dialog ref={readListDialogRef} className="read-list-dialog" aria-labelledby="read-list-title" onCancel={closeReadList} onClose={closeReadList}>
       <form onSubmit={event => void submitReadList(event)}>
         <header><div><p className="eyebrow">Only Order</p><h2 id="read-list-title">{editingSourceMessageId ? 'Edit source message' : appendToDraft ? 'Add message to order' : 'Read WhatsApp list'}</h2></div>
@@ -236,16 +250,28 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
       </fieldset>
     </form>)}
     {mode === 'list' && <>
-      <section className="metrics"><div><span>Orders</span><strong>{orders.length}</strong></div><div><span>Average order</span><strong>{currency(orders.length ? orders.reduce((sum, order) => sum + order.totalAmount, 0) / orders.length : 0)}</strong></div><div><span>Total amount</span><strong>{currency(orders.reduce((sum, order) => sum + order.totalAmount, 0))}</strong></div></section>
-      <section className="orders-layout"><div className="panel">
-        <OrderHistoryHeader mode="only" onSelectMode={next => { if (next === 'inventory' && !deleting) onBack() }} onReadList={() => openReadList()} onNewOrder={() => { if (deleting) return; setSelectedOrderIds([]); setEditingId(undefined); setSourceMessages([]); setLines([emptyOnlyOrderLine()]); setError(''); setMode('edit') }} />
-        {!selectedOrders.length && orders.length > 0 && <p className="selection-hint">Tap an order for details · Long press to select</p>}
-        {orders.length ? <div className={`orders-table ${selectedOrders.length ? 'selection-mode' : ''}`}>
+      <section className="orders-layout"><div className={`panel ${historyOpen ? 'order-history-panel' : ''}`}>
+        <OrderHistoryHeader
+          mode="only"
+          view={historyOpen ? 'history' : 'orders'}
+          onBackToOrders={() => { setHistoryOpen(false); setOrderSearch(''); setHistoryPage(1); setSelectedOrderIds([]) }}
+          onSelectMode={next => { if (next === 'inventory' && !deleting) onBack() }}
+          onAllOrders={() => { setHistoryOpen(true); setHistoryPage(1); setOrderSearch(''); setSelectedOrderIds([]) }}
+          onReadList={() => openReadList()}
+          onNewOrder={() => { if (deleting) return; setSelectedOrderIds([]); setEditingId(undefined); setSourceMessages([]); setLines([emptyOnlyOrderLine()]); setCustomerName(''); setError(''); setMode('edit') }}
+          openChooser={openChooser}
+          onChooserOpened={onChooserOpened}
+        />
+        {historyOpen && <>
+        <section className="metrics"><div><span>Orders</span><strong>{orders.length}</strong></div><div><span>Average order</span><strong>{currency(orders.length ? orders.reduce((sum, order) => sum + order.totalAmount, 0) / orders.length : 0)}</strong></div><div><span>Total amount</span><strong>{currency(orders.reduce((sum, order) => sum + order.totalAmount, 0))}</strong></div></section>
+        <OrderHistorySearch value={orderSearch} onChange={value => { setOrderSearch(value); setHistoryPage(1); setSelectedOrderIds([]) }} />
+        {!selectedOrders.length && filteredOrders.length > 0 && <p className="selection-hint">Tap an order for details · Long press to select</p>}
+        {filteredOrders.length ? <div className={`orders-table ${selectedOrders.length ? 'selection-mode' : ''}`}>
           <div className="orders-table-header">
-            {selectedOrders.length > 0 && <input type="checkbox" aria-label="Select all orders" disabled={deleting} checked={selectedOrders.length === orders.length} onChange={event => setSelectedOrderIds(event.target.checked ? orders.map(order => order.id) : [])} />}
+            {selectedOrders.length > 0 && <input type="checkbox" aria-label="Select all orders on this page" disabled={deleting} checked={visibleOrders.length > 0 && visibleOrders.every(order => selectedOrderIds.includes(order.id))} onChange={event => setSelectedOrderIds(event.target.checked ? [...new Set([...selectedOrderIds, ...visibleOrders.map(order => order.id)])] : selectedOrderIds.filter(id => !visibleOrders.some(order => order.id === id)))} />}
             <span>Order number</span><span>Amount</span>
           </div>
-          {orders.map(order => <OrderRow key={order.id} order={order} selectionMode={selectedOrders.length > 0} selected={selectedOrderIds.includes(order.id)} onOpen={() => { if (!deleting) { setSelectedId(order.id); setMode('detail') } }} onSelect={toggleOrderSelection} />)}
+          {visibleOrders.map(order => <OrderRow key={order.id} order={order} selectionMode={selectedOrders.length > 0} selected={selectedOrderIds.includes(order.id)} onOpen={() => { if (!deleting) { setSelectedId(order.id); setMode('detail') } }} onSelect={toggleOrderSelection} />)}
           {selectedOrders.length > 0 && <div className="selected-order-actions">
             <span>{selectedOrders.length} order{selectedOrders.length === 1 ? '' : 's'} selected</span>
             <div>
@@ -254,7 +280,9 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed 
               <button type="button" className="icon-button" title="Clear selection" aria-label="Clear selection" disabled={deleting} onClick={() => setSelectedOrderIds([])}><X size={16} /></button>
             </div>
           </div>}
-        </div> : <p className="muted">No orders yet.</p>}
+        </div> : <p className="muted">{orders.length ? 'No orders match your search.' : 'No orders yet.'}</p>}
+        {filteredOrders.length > 0 && <OrderHistoryPagination page={visibleHistoryPage} pageSize={historyPageSize} total={filteredOrders.length} onPageChange={setHistoryPage} onPageSizeChange={pageSize => { setHistoryPageSize(pageSize); setHistoryPage(1) }} />}
+        </>}
       </div></section>
     </>}
     {mode === 'detail' && selected && <>

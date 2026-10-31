@@ -76,7 +76,8 @@ test('duplicate detection normalizes case and whitespace but permits editing the
 test('source-message associations persist on saved Only Orders and validate with backups', async () => {
   const message = { id: 'persisted-source-1', text: 'Rice 1 bag' }
   const draft = updateOnlyOrderLine({ ...draftsFromReadList([{ productName: 'Rice', volume: 'bag', quantity: 1, quantityAssumed: true }], message.id)[0] }, 'price', '10')
-  const order = await saveOnlyOrder(inventoryDb, [draft], undefined, [message])
+  const order = await saveOnlyOrder(inventoryDb, [draft], undefined, [message], 'Customer Test')
+  assert.equal(order.customerName, 'Customer Test')
   assert.deepEqual(order.sourceMessages, [message])
   assert.equal(order.items[0].sourceMessageId, message.id)
   assert.equal(order.items[0].quantityAssumed, true)
@@ -84,7 +85,8 @@ test('source-message associations persist on saved Only Orders and validate with
   assert.equal(isOnlyOrder({ ...order, items: [{ ...order.items[0], sourceMessageId: 'missing-source' }] }), false)
 
   const savedDraft = { ...draft, quantity: '2', price: '10', total: '20' }
-  const edited = await saveOnlyOrder(inventoryDb, [savedDraft], order.id, [{ ...message, text: 'Rice two bags' }])
+  const edited = await saveOnlyOrder(inventoryDb, [savedDraft], order.id, [{ ...message, text: 'Rice two bags' }], 'Updated Customer')
+  assert.equal(edited.customerName, 'Updated Customer')
   assert.equal(edited.sourceMessages[0].text, 'Rice two bags')
   assert.equal(edited.items[0].quantity, 2)
   assert.equal(edited.items[0].sourceMessageId, message.id)

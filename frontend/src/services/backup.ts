@@ -36,7 +36,9 @@ function isProductOption(value: unknown): value is ProductOption {
 function isOrder(value: unknown): value is SalesOrder {
   if (!value || typeof value !== 'object') return false
   const order = value as Record<string, unknown>
-  return typeof order.id === 'string' && typeof order.orderNumber === 'string' && typeof order.soldAt === 'string' && typeof order.totalAmount === 'number'
+  return typeof order.id === 'string' && typeof order.orderNumber === 'string' &&
+    (order.customerName === undefined || (typeof order.customerName === 'string' && order.customerName.length <= 120)) &&
+    typeof order.soldAt === 'string' && typeof order.totalAmount === 'number'
 }
 
 function isOrderItem(value: unknown): value is SalesOrderItem {

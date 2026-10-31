@@ -3,8 +3,8 @@ main = "src/index.ts"
 compatibility_date = "2026-09-01"
 
 [vars]
-# The GitHub Pages origin that is allowed to call this proxy. Update to your real Pages URL.
-ALLOWED_ORIGIN = "https://rajvamsi18.github.io"
+# Comma-separated origins allowed to call this proxy from a browser.
+ALLOWED_ORIGIN = "https://rajvamsi18.github.io,http://localhost:5173,http://127.0.0.1:5173"
 
 [ai]
 binding = "AI"

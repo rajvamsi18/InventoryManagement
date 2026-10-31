@@ -31,7 +31,7 @@ plan. Local `wrangler dev` AI inference still uses the Cloudflare account quota.
 3. Enable Workers AI for the Cloudflare account. No separate model API key is used.
 4. Get a Sarvam API key from https://dashboard.sarvam.ai
 5. Set the secret (never commit it): `npx wrangler secret put SARVAM_API_KEY`
-6. Update `ALLOWED_ORIGIN` in `wrangler.toml` to your real GitHub Pages URL.
+6. Update `ALLOWED_ORIGIN` in `wrangler.toml` with comma-separated browser origins. Keep the GitHub Pages origin and add local Vite origins when testing the frontend locally.
 7. Deploy: `npm run deploy` — this prints the worker's URL
    (e.g. `https://smkg-stt-proxy.<your-subdomain>.workers.dev`).
 8. In `frontend/.env` (or your GitHub Pages build variables), set:

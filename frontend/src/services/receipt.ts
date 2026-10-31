@@ -4,9 +4,13 @@ import type { SalesOrder, SalesOrderItem } from './database'
 
 export const STORE = {
   name: 'SMKG - Sri Mareswari Kirana & General Stores',
-  address: '1 Nowroji Road, Daspalla Hills, Pandurangapuram, Visakhapatnam, Andhra Pradesh - 530002',
+  address: '14-1-63/3, Pandimetta, Nowroji Road, Visakhapatnam - 530 002',
   contact: '+91 9347319292',
+  gstin: '37AGGPC9606C1ZQ',
+  dealerType: 'Composition Dealer',
 }
+
+const receiptTitleSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="112" height="30" viewBox="0 0 112 30"><rect x="0.5" y="0.5" width="111" height="29" rx="4" fill="none" stroke="#000000" stroke-width="1"/><text x="56" y="19" text-anchor="middle" font-family="Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#000000">Order Receipt</text></svg>'
 
 export function receiptDate(soldAt: string): string {
   return new Intl.DateTimeFormat('en-IN', {
@@ -30,6 +34,17 @@ async function fontData(url: URL): Promise<string> {
     binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768))
   }
   return btoa(binary)
+}
+
+async function imageData(url: URL): Promise<string> {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error('Could not load receipt illustration.')
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  let binary = ''
+  for (let offset = 0; offset < bytes.length; offset += 32768) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768))
+  }
+  return `data:image/jpeg;base64,${btoa(binary)}`
 }
 
 function receiptFonts(): Promise<Record<string, string>> {
@@ -56,20 +71,39 @@ function receiptText(value: string): { text: string; font: string }[] {
   return runs
 }
 
-export async function createReceipt(order: SalesOrder, items: SalesOrderItem[], customerName = ''): Promise<File> {
-  const fonts = await receiptFonts()
+export async function createReceipt(order: SalesOrder, items: SalesOrderItem[]): Promise<File> {
+  const [fonts, goddessIllustration] = await Promise.all([
+    receiptFonts(),
+    imageData(new URL('../assets/kanamahalakshmi.jpg', import.meta.url)),
+  ])
   const green = '#1c6546'
   const content: Content[] = [
-    { text: 'SMKG', fontSize: 22, bold: true, color: green },
-    { text: 'Sri Mareswari Kirana & General Stores', fontSize: 10, bold: true, color: green },
-    { text: STORE.address, fontSize: 8, margin: [0, 6, 0, 3] },
-    { text: `Contact: ${STORE.contact}`, fontSize: 8 },
+    {
+      svg: receiptTitleSvg,
+      width: 112,
+      height: 30,
+      alignment: 'center',
+      margin: [0, 0, 0, 4],
+    },
+    {
+      columns: [
+        { width: '*', stack: [
+          { text: 'SMKG', fontSize: 22, bold: true, color: green, margin: [0, 0, 0, 4] },
+          { text: 'Sri Mareswari Kirana & General Stores', fontSize: 10, bold: true, color: green, margin: [0, 0, 0, 2] },
+          { text: STORE.address, fontSize: 8, margin: [0, 6, 0, 3] },
+          { text: `Contact: ${STORE.contact}`, fontSize: 8, margin: [0, 0, 0, 3] },
+          { text: `GSTIN: ${STORE.gstin}`, fontSize: 8, margin: [0, 0, 0, 3] },
+          { text: STORE.dealerType, fontSize: 8 },
+        ] },
+        { width: 64, image: goddessIllustration, margin: [8, 18, 0, 0] },
+      ],
+      columnGap: 8,
+    },
     { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 351.53, y2: 0, lineWidth: 1, lineColor: green }], margin: [0, 10, 0, 10] },
-    { text: 'ORDER RECEIPT', fontSize: 12, bold: true, margin: [0, 0, 0, 6] },
-    { text: `Order: ${order.orderNumber}`, margin: [0, 0, 0, 3] },
+    { text: `Order Number: ${order.orderNumber}`, fontSize: 9, bold: true, color: green, margin: [0, 0, 0, 3] },
     { text: `Date: ${receiptDate(order.soldAt)} IST`, margin: [0, 0, 0, 6] },
   ]
-  if (customerName.trim()) content.push({ text: receiptText(`Customer: ${customerName.trim()}`), margin: [0, 0, 0, 6] })
+  if (order.customerName?.trim()) content.push({ text: receiptText(`Customer: ${order.customerName.trim()}`), fontSize: 9, bold: true, color: green, margin: [0, 0, 0, 6] })
   content.push({
     table: {
       headerRows: 1,

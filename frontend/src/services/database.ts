@@ -60,6 +60,7 @@ export type ProductStockLot = {
 export type SalesOrder = {
   id: string
   orderNumber: string
+  customerName?: string
   soldAt: string
   totalAmount: number
   createdAt: string

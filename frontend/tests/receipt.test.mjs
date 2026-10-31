@@ -29,16 +29,22 @@ async function pdfContents(file) {
 const contains = (text, value) => text.replace(/\s+/g, '').includes(value.replace(/\s+/g, ''))
 
 test('receipt uses saved sale values and excludes private costs', async () => {
-  const file = await createReceipt(order, [item], 'Customer Test')
+  const file = await createReceipt({ ...order, customerName: 'Customer Test' }, [item])
   const pdf = (await pdfContents(file)).text
   assert.equal(file.name, 'SMKG-000006.pdf')
   assert.equal(file.type, 'application/pdf')
   assert.ok((await file.text()).startsWith('%PDF-'))
-  for (const value of ['SMKG-000006', 'Rice', '90.00', '180.00', 'Customer Test', STORE.contact]) {
+  for (const value of ['Order Receipt', 'SMKG', 'Order Number:', 'SMKG-000006', 'Rice', '90.00', '180.00', 'Customer Test', STORE.address, `Contact: ${STORE.contact}`, STORE.gstin, STORE.dealerType]) {
     assert.ok(contains(pdf, value), value)
   }
   assert.ok(!pdf.includes('67.00'))
   assert.ok(contains(pdf, 'does not confirm payment'))
+})
+
+test('receipt places customer after the date and order number', async () => {
+  const pdf = await pdfContents(await createReceipt({ ...order, customerName: 'Raj' }, [item]))
+  assert.ok(pdf.text.indexOf('SMKG-000006') < pdf.text.indexOf('Date:'))
+  assert.ok(pdf.text.indexOf('Date:') < pdf.text.indexOf('Customer: Raj'))
 })
 
 test('long orders paginate and retain the total', async () => {
@@ -72,7 +78,7 @@ test('Telugu product names, Volume and customer names remain readable', async ()
   const productName = '\u0c2c\u0c3f\u0c2f\u0c4d\u0c2f\u0c02'
   const volume = '30 \u0c15\u0c3f\u0c32\u0c4b\u0c32\u0c41'
   const customer = '\u0c30\u0c3e\u0c2e\u0c41'
-  const file = await createReceipt(order, [{ ...item, productName, volume }], customer)
+  const file = await createReceipt({ ...order, customerName: customer }, [{ ...item, productName, volume }])
   const pdf = await pdfContents(file)
   assert.ok(contains(pdf.text, productName), pdf.text)
   assert.ok(contains(pdf.text, volume), pdf.text)

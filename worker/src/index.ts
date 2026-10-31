@@ -19,18 +19,26 @@ const quantityWords: Record<string, number> = {
   ఒకటి: 1, రెండు: 2, మూడు: 3, నాలుగు: 4, ఐదు: 5, ఆరు: 6, ఏడు: 7, ఎనిమిది: 8, తొమ్మిది: 9, పది: 10,
 }
 
-function corsHeaders(env: Env): HeadersInit {
+function corsHeaders(env: Env, requestOrigin?: string): HeadersInit {
+  const allowedOrigins = env.ALLOWED_ORIGIN
+    ?.split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean) ?? ['*']
+  const allowedOrigin = requestOrigin && allowedOrigins.includes(requestOrigin)
+    ? requestOrigin
+    : allowedOrigins[0] || '*'
   return {
-    'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',
+    'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
   }
 }
 
-function jsonResponse(body: unknown, status: number, env: Env): Response {
+function jsonResponse(body: unknown, status: number, env: Env, requestOrigin?: string): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders(env), 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders(env, requestOrigin), 'Content-Type': 'application/json' },
   })
 }
 
@@ -76,19 +84,20 @@ function decodeItems(response: unknown): unknown {
 }
 
 async function readList(request: Request, env: Env): Promise<Response> {
-  if (!env.AI || !env.READ_LIST_LIMITER) return jsonResponse({ error: 'Read List is not configured yet.' }, 503, env)
+  const respond = (body: unknown, status: number) => jsonResponse(body, status, env, request.headers.get('Origin') ?? undefined)
+  if (!env.AI || !env.READ_LIST_LIMITER) return respond({ error: 'Read List is not configured yet.' }, 503)
 
   const contentLength = Number(request.headers.get('content-length') ?? 0)
-  if (contentLength > MAX_MESSAGE_LENGTH * 4) return jsonResponse({ error: 'This message is too long to read.' }, 413, env)
+  if (contentLength > MAX_MESSAGE_LENGTH * 4) return respond({ error: 'This message is too long to read.' }, 413)
 
   let input: unknown
-  try { input = await request.json() } catch { return jsonResponse({ error: 'Send the WhatsApp message as JSON.' }, 400, env) }
+  try { input = await request.json() } catch { return respond({ error: 'Send the WhatsApp message as JSON.' }, 400) }
   const text = input && typeof input === 'object' && 'text' in input && typeof input.text === 'string' ? input.text.trim() : ''
-  if (!text) return jsonResponse({ error: 'Paste a WhatsApp message first.' }, 400, env)
-  if (text.length > MAX_MESSAGE_LENGTH) return jsonResponse({ error: 'This message is too long to read.' }, 413, env)
+  if (!text) return respond({ error: 'Paste a WhatsApp message first.' }, 400)
+  if (text.length > MAX_MESSAGE_LENGTH) return respond({ error: 'This message is too long to read.' }, 413)
 
   const { success } = await env.READ_LIST_LIMITER.limit({ key: request.headers.get('cf-connecting-ip') ?? 'unknown' })
-  if (!success) return jsonResponse({ error: 'Too many list reads. Please wait a minute and try again.' }, 429, env)
+  if (!success) return respond({ error: 'Too many list reads. Please wait a minute and try again.' }, 429)
 
   const prompt = [
     'Extract grocery order line items from the following WhatsApp message. The message may contain English, Telugu script, Telugu transliterated into English letters, spelling errors, and unrelated conversation.',
@@ -116,9 +125,9 @@ async function readList(request: Request, env: Env): Promise<Response> {
     })
     const decoded = decodeItems(modelResponse)
     if (!decoded || typeof decoded !== 'object' || !('items' in decoded) || !Array.isArray(decoded.items)) {
-      return jsonResponse({ error: 'Could not identify a product list in that message.' }, 422, env)
+      return respond({ error: 'Could not identify a product list in that message.' }, 422)
     }
-    if (decoded.items.length > MAX_ORDER_LINES) return jsonResponse({ error: 'The message contains too many product lines. Split it into smaller lists.' }, 422, env)
+    if (decoded.items.length > MAX_ORDER_LINES) return respond({ error: 'The message contains too many product lines. Split it into smaller lists.' }, 422)
 
     const items = decoded.items.map((item: unknown) => {
       if (!item || typeof item !== 'object' || !('productName' in item) || typeof item.productName !== 'string') {
@@ -154,22 +163,23 @@ async function readList(request: Request, env: Env): Promise<Response> {
       return { productName, volume, quantity, quantityAssumed }
     })
 
-    if (!items.length) return jsonResponse({ error: 'I could not identify any products. Try editing the message and read it again.' }, 422, env)
-    return jsonResponse({ items }, 200, env)
+    if (!items.length) return respond({ error: 'I could not identify any products. Try editing the message and read it again.' }, 422)
+    return respond({ items }, 200)
   } catch (error) {
     console.error('Read List model request failed:', error instanceof Error ? error.message : 'Unknown error')
-    return jsonResponse({ error: 'Could not read this message right now. Please try again or enter the items manually.' }, 502, env)
+    return respond({ error: 'Could not read this message right now. Please try again or enter the items manually.' }, 502)
   }
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders(env) })
-    if (request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: corsHeaders(env) })
+    const requestOrigin = request.headers.get('Origin') ?? undefined
+    if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders(env, requestOrigin) })
+    if (request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: corsHeaders(env, requestOrigin) })
     const { pathname } = new URL(request.url)
     if (pathname === '/read-list') return readList(request, env)
     if (pathname !== '/' && pathname !== '') return new Response('Not found', { status: 404, headers: corsHeaders(env) })
-    if (!env.SARVAM_API_KEY) return new Response('Server not configured: missing SARVAM_API_KEY', { status: 500, headers: corsHeaders(env) })
+    if (!env.SARVAM_API_KEY) return new Response('Server not configured: missing SARVAM_API_KEY', { status: 500, headers: corsHeaders(env, requestOrigin) })
 
     const incoming = await request.formData()
     const file = incoming.get('file') as File | string | null
@@ -190,6 +200,6 @@ export default {
     })
 
     const body = await sarvamResponse.text()
-    return new Response(body, { status: sarvamResponse.status, headers: { ...corsHeaders(env), 'Content-Type': 'application/json' } })
+    return new Response(body, { status: sarvamResponse.status, headers: { ...corsHeaders(env, requestOrigin), 'Content-Type': 'application/json' } })
   },
 }

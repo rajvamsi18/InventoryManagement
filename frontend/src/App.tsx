@@ -11,11 +11,14 @@ import { OfflineIndicator } from "./components/OfflineIndicator";
 import { OptionManager } from "./components/OptionManager";
 import { OrderRow } from "./components/OrderRow";
 import { OrderHistoryHeader } from "./components/OrderHistoryHeader";
+import { OrderHistoryPagination } from "./components/OrderHistoryPagination";
+import { OrderHistorySearch } from "./components/OrderHistorySearch";
 import { ProductForm } from "./components/ProductForm";
 import { ProductList } from "./components/ProductList";
 import { SalesBasket, type BasketLine } from "./components/SalesBasket";
 import type { VoiceProductPrefill } from "./components/VoiceOrderAssistant";
 import { downloadBackup, readBackup } from "./services/backup";
+import { matchesOrderSearch } from "./services/orderSearch";
 import {
   inventoryDb,
   type Product,
@@ -48,12 +51,18 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [editingOrder, setEditingOrder] = useState<SalesOrder>();
   const [saleLines, setSaleLines] = useState<BasketLine[]>([]);
+  const [customerName, setCustomerName] = useState("");
   const [showSalesBasket, setShowSalesBasket] = useState(false);
   const [addingProductForOrder, setAddingProductForOrder] = useState(false);
   const [newProductPrefill, setNewProductPrefill] = useState<VoiceProductPrefill>();
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [viewingOrder, setViewingOrder] = useState<SalesOrder>();
   const [salesMode, setSalesMode] = useState<'inventory' | 'only'>(() => sharedOnlyOrderMessage() ? 'only' : 'inventory');
+  const [inventoryHistoryOpen, setInventoryHistoryOpen] = useState(false);
+  const [inventoryOrderSearch, setInventoryOrderSearch] = useState("");
+  const [inventoryHistoryPage, setInventoryHistoryPage] = useState(1);
+  const [inventoryHistoryPageSize, setInventoryHistoryPageSize] = useState<5 | 10 | 20>(5);
+  const [orderChooserPending, setOrderChooserPending] = useState(false);
   const [sharedMessage, setSharedMessage] = useState(sharedOnlyOrderMessage);
   const [requestedOptionType, setRequestedOptionType] =
     useState<ProductOptionType>();
@@ -73,6 +82,13 @@ function App() {
       () => inventoryDb.orders.orderBy("soldAt").reverse().toArray(),
       [],
     ) ?? [];
+  const filteredInventoryOrders = orders.filter(order => matchesOrderSearch(order, inventoryOrderSearch));
+  const inventoryHistoryPageCount = Math.max(1, Math.ceil(filteredInventoryOrders.length / inventoryHistoryPageSize));
+  const visibleInventoryHistoryPage = Math.min(inventoryHistoryPage, inventoryHistoryPageCount);
+  const visibleInventoryOrders = filteredInventoryOrders.slice(
+    (visibleInventoryHistoryPage - 1) * inventoryHistoryPageSize,
+    visibleInventoryHistoryPage * inventoryHistoryPageSize,
+  );
   const orderItems =
     useLiveQuery(() => inventoryDb.orderItems.toArray(), []) ?? [];
   const productOptions =
@@ -528,12 +544,14 @@ function App() {
             .delete();
           await inventoryDb.orders.update(orderId, {
             totalAmount,
+            customerName: customerName.trim(),
             updatedAt: timestamp,
           });
         } else {
             await inventoryDb.orders.add({
               id: orderId,
               orderNumber: `SMKG-${String(nextOrderSequence).padStart(6, "0")}`,
+              customerName: customerName.trim(),
               soldAt: timestamp,
               totalAmount,
               createdAt: timestamp,
@@ -567,6 +585,7 @@ function App() {
     );
     setSaleLines([]);
     setEditingOrder(undefined);
+    setCustomerName("");
     setShowSalesBasket(false);
     setViewingOrder(await inventoryDb.orders.get(orderId));
   }
@@ -576,6 +595,7 @@ function App() {
       .equals(order.id)
       .toArray();
     setEditingOrder(order);
+    setCustomerName(order.customerName ?? "");
     setSaleLines(
       items.map((item) => ({
         productId: item.productId,
@@ -681,12 +701,14 @@ function App() {
     if (editingOrder) {
       setEditingOrder(undefined);
       setSaleLines([]);
+      setCustomerName("");
     }
     setShowSalesBasket(false);
   }
   function discardSalesBasket() {
     setEditingOrder(undefined);
     setSaleLines([]);
+    setCustomerName("");
     setShowSalesBasket(false);
   }
   const detailProduct = selectedProduct
@@ -1122,13 +1144,15 @@ function App() {
       {tab === "Sales" && (
         salesMode === 'only' ? (
           <Suspense fallback={<p role="status">Loading orders...</p>}>
-            <OnlyOrdersPage onBack={() => setSalesMode('inventory')} sharedMessage={sharedMessage} onSharedMessageConsumed={() => setSharedMessage('')} />
+            <OnlyOrdersPage onBack={() => { setSalesMode('inventory'); setInventoryHistoryOpen(false); setOrderChooserPending(true) }} sharedMessage={sharedMessage} onSharedMessageConsumed={() => setSharedMessage('')} openChooser={orderChooserPending} onChooserOpened={() => setOrderChooserPending(false)} />
           </Suspense>
         ) : showSalesBasket ? (
           <SalesBasket
             products={products}
             categories={categories}
             lines={saleLines}
+            customerName={customerName}
+            onCustomerNameChange={setCustomerName}
             orderNumber={editingOrder?.orderNumber ?? nextOrderNumber}
             isEditing={Boolean(editingOrder)}
             soldCounts={soldCounts}
@@ -1152,10 +1176,10 @@ function App() {
                   className="back-button"
                   onClick={() => setViewingOrder(undefined)}
                 >
-                  <ArrowLeft size={15} /> Back to orders
+                  <ArrowLeft size={15} /> Orders
                 </button>
                 <p className="eyebrow">Order details</p>
-                <h1>{viewingOrder.orderNumber}</h1>
+                <h1 className="order-number-heading">{viewingOrder.orderNumber}{viewingOrder.customerName?.trim() && <span className="customer-name-highlight">{viewingOrder.customerName.trim()}</span>}</h1>
                 <p>{new Date(viewingOrder.soldAt).toLocaleString()}</p>
               </div>
               <button
@@ -1212,11 +1236,10 @@ function App() {
         <section>
           <header className="page-heading">
             <div>
-              <p className="eyebrow">Point of sale</p>
               <h1>Orders</h1>
             </div>
           </header>
-          <section className="metrics">
+          {inventoryHistoryOpen && <section className="metrics">
             <div>
               <span>Orders</span>
               <strong>{orders.length}</strong>
@@ -1238,16 +1261,31 @@ function App() {
               <span>Most sold</span>
               <strong className="metric-text">{mostSold}</strong>
             </div>
-          </section>
+          </section>}
           <section className="orders-layout">
-            <div className="panel">
-              <OrderHistoryHeader mode="inventory" onSelectMode={mode => { setSalesMode(mode); setSelectedOrderIds([]); }} onNewOrder={() => setShowSalesBasket(true)} newOrderLabel={saleLines.length ? `Continue order (${saleLines.length})` : "New order"} />
-              {!selectedOrderIds.length && orders.length > 0 && (
+            <div className={`panel ${inventoryHistoryOpen ? 'order-history-panel' : ''}`}>
+              <OrderHistoryHeader
+                mode="inventory"
+                view={inventoryHistoryOpen ? 'history' : 'orders'}
+                onBackToOrders={() => { setInventoryHistoryOpen(false); setInventoryOrderSearch(""); setSelectedOrderIds([]) }}
+                onSelectMode={mode => {
+                  if (mode !== salesMode) setOrderChooserPending(true);
+                  setSalesMode(mode);
+                  setInventoryHistoryOpen(false);
+                  setSelectedOrderIds([]);
+                }}
+                onAllOrders={() => { setInventoryHistoryOpen(true); setInventoryHistoryPage(1); setInventoryOrderSearch(""); setSelectedOrderIds([]) }}
+                onNewOrder={() => setShowSalesBasket(true)}
+                openChooser={orderChooserPending}
+                onChooserOpened={() => setOrderChooserPending(false)}
+              />
+              {inventoryHistoryOpen && <OrderHistorySearch value={inventoryOrderSearch} onChange={value => { setInventoryOrderSearch(value); setInventoryHistoryPage(1); setSelectedOrderIds([]) }} />}
+              {inventoryHistoryOpen && !selectedOrderIds.length && filteredInventoryOrders.length > 0 && (
                 <p className="selection-hint">
                   Tap an order for details · Long press to select
                 </p>
               )}
-              {orders.length ? (
+              {inventoryHistoryOpen && (filteredInventoryOrders.length ? (
                 <div
                   className={`orders-table ${selectedOrderIds.length ? "selection-mode" : ""}`}
                 >
@@ -1256,12 +1294,12 @@ function App() {
                       <input
                         type="checkbox"
                         aria-label="Select all orders"
-                        checked={selectedOrderIds.length === orders.length}
+                        checked={visibleInventoryOrders.length > 0 && visibleInventoryOrders.every(order => selectedOrderIds.includes(order.id))}
                         onChange={(event) =>
                           setSelectedOrderIds(
                             event.target.checked
-                              ? orders.map((order) => order.id)
-                              : [],
+                              ? [...new Set([...selectedOrderIds, ...visibleInventoryOrders.map(order => order.id)])]
+                              : selectedOrderIds.filter(id => !visibleInventoryOrders.some(order => order.id === id)),
                           )
                         }
                       />
@@ -1269,7 +1307,7 @@ function App() {
                     <span>Order number</span>
                     <span>Amount</span>
                   </div>
-                  {orders.map((order) => (
+                  {visibleInventoryOrders.map((order) => (
                   <OrderRow
                     key={order.id}
                     order={order}
@@ -1313,8 +1351,15 @@ function App() {
                   )}
                 </div>
               ) : (
-                <p className="muted">Orders will appear here.</p>
-              )}
+                <p className="muted">{orders.length ? 'No orders match your search.' : 'Orders will appear here.'}</p>
+              ))}
+              {inventoryHistoryOpen && filteredInventoryOrders.length > 0 && <OrderHistoryPagination
+                page={visibleInventoryHistoryPage}
+                pageSize={inventoryHistoryPageSize}
+                total={filteredInventoryOrders.length}
+                onPageChange={setInventoryHistoryPage}
+                onPageSizeChange={pageSize => { setInventoryHistoryPageSize(pageSize); setInventoryHistoryPage(1) }}
+              />}
             </div>
           </section>
         </section>

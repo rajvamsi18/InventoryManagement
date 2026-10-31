@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Download, ReceiptText, Share2 } from 'lucide-react'
+import goddessIllustrationUrl from '../assets/kanamahalakshmi.jpg'
 import type { SalesOrder, SalesOrderItem } from '../services/database'
 import { createReceipt, downloadReceipt, receiptDate, receiptProductName, STORE } from '../services/receipt'
 
@@ -7,19 +8,18 @@ type Props = { order: SalesOrder; items: SalesOrderItem[] }
 
 export function OrderReceipt({ order, items }: Props) {
   const [open, setOpen] = useState(false)
-  const [customerName, setCustomerName] = useState('')
   const [sharing, setSharing] = useState(false)
   const [message, setMessage] = useState('')
   const [prepared, setPrepared] = useState<{ key: string; file?: File; error?: string }>()
-  const receiptKey = JSON.stringify({ order, items, customerName })
+  const receiptKey = JSON.stringify({ order, items })
   const file = prepared?.key === receiptKey ? prepared.file : undefined
   const pdfError = prepared?.key === receiptKey ? prepared.error : undefined
 
   useEffect(() => {
     if (!open || !items.length) return
     let cancelled = false
-    const values = JSON.parse(receiptKey) as { order: SalesOrder; items: SalesOrderItem[]; customerName: string }
-    void createReceipt(values.order, values.items, values.customerName).then(file => {
+    const values = JSON.parse(receiptKey) as { order: SalesOrder; items: SalesOrderItem[] }
+    void createReceipt(values.order, values.items).then(file => {
       if (!cancelled) setPrepared({ key: receiptKey, file })
     }).catch(() => {
       if (!cancelled) setPrepared({ key: receiptKey, error: 'Could not create the receipt. Close and reopen Receipt to retry.' })
@@ -65,9 +65,6 @@ export function OrderReceipt({ order, items }: Props) {
       {open && (
         <>
           <div className="receipt-toolbar">
-            <label>Customer name (optional)
-              <input value={customerName} maxLength={120} onChange={event => setCustomerName(event.target.value)} />
-            </label>
             <div className="receipt-actions">
               <button type="button" className="primary-button" onClick={download} disabled={!file || sharing}>
                 <Download size={16} /> Download PDF
@@ -82,16 +79,23 @@ export function OrderReceipt({ order, items }: Props) {
           {message && <p role="status" className="receipt-status">{message}</p>}
           <article className="receipt-preview" aria-label="Order receipt preview">
             <header className="receipt-store">
-              <h2>SMKG</h2>
-              <strong>Sri Mareswari Kirana &amp; General Stores</strong>
-              <p>{STORE.address}</p>
-              <p>{STORE.contact}</p>
+              <h3 className="receipt-document-title">Order Receipt</h3>
+              <div className="receipt-brand-line">
+                <h2>SMKG</h2>
+              </div>
+              <div className="receipt-store-copy">
+                <strong>Sri Mareswari Kirana &amp; General Stores</strong>
+                <p>{STORE.address}</p>
+                <p>Contact: {STORE.contact}</p>
+                <p>GSTIN: {STORE.gstin}</p>
+                <p>{STORE.dealerType}</p>
+              </div>
+              <img className="receipt-goddess" src={goddessIllustrationUrl} alt="Goddess Kanaka Mahalakshmi" />
             </header>
             <div className="receipt-meta">
-              <h3>Order Receipt</h3>
-              <strong>{order.orderNumber}</strong>
+              <strong className="receipt-order-identifier">Order Number: {order.orderNumber}</strong>
               <p>{receiptDate(order.soldAt)} IST</p>
-              {customerName.trim() && <p>Customer: {customerName.trim()}</p>}
+              {order.customerName?.trim() && <p className="receipt-customer-identifier">Customer: {order.customerName.trim()}</p>}
             </div>
             <table>
               <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Amount</th></tr></thead>

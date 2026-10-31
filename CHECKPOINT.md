@@ -1,6 +1,6 @@
 # SMKG Checkpoint
 
-**Updated:** 2026-10-19
+**Updated:** 2026-10-31
 **Application:** SMKG - Sri Mareswari Kirana & General Stores
 **Current phase:** Offline-first frontend MVP
 
@@ -19,13 +19,17 @@
 
 - Made Volume optional in Only Order creation/editing and backup validation. Blank-volume receipts show just the product name. Inventory Volume requirements are unchanged; regression tests cover blank-volume saving and backup compatibility.
 
-- Replaced the New order mode popup with shared From Inventory/Only Order selectors within Order History, above Recent Orders. Lists retain the standard order-number/amount layout; New order starts the selected flow directly. Only Order labels now use `Order - N` without zero padding, including legacy record display and receipts; inventory numbering is unchanged. Verified routing and filtering in the browser and desktop/mobile layouts.
+- Updated Sales navigation to an **Orders** landing page with From Inventory and Only Order choices. Selecting a flow reveals inline **All Orders** and **Create Order** choices (no chooser popup); Only Order creation offers inline **From list** (WhatsApp Read List) or **Without list**, while From Inventory retains its catalog basket. The Read List message-entry dialog remains. Each All Orders view has its own 5/10/20 pagination and searches all saved orders by order number, customer, date, or exact amount before paging. The history view has an **Orders** back action, and customer names appear below order numbers.
 
-- Added a New order modal with From Inventory and Only Order. From Inventory preserves the catalog/basket and stock-linked order workflow. Only Order has a separate lazy-loaded page and IndexedDB v9 `onlyOrders` table, embedded free-text Product/Volume lines, positive whole quantities, bidirectional Price/Total calculations, standalone numbering, editing/deletion, and shared PDF receipts. It never mutates inventory tables or contributes to Home/catalog metrics. Backup v4 includes both flows and still imports v1-v3. Renamed visible product/voice-review Pack size labels to Volume. Verified calculations, inventory isolation, CRUD, receipt sharing payload, backup compatibility, chooser routing, and desktop/mobile layouts; runtime dependency audit is clean. Sarvam remains deferred.
+- Improved order creation and detail pages with optional saved customer names. The name is shown below the order number during entry, in order history/details, and in receipts. Only Order edit/create identity text is 20px; customer rows and receipt metadata use the matching requested hierarchy.
+
+- Added a separate lazy-loaded Only Order page and IndexedDB v9 `onlyOrders` table, embedded free-text Product/Volume lines, positive finite quantities including decimals, bidirectional Price/Total calculations, standalone numbering, editing/deletion, and shared PDF receipts. It never mutates inventory tables or contributes to Home/catalog metrics. Backup v4 includes both flows and still imports v1-v3. Renamed visible product/voice-review Pack size labels to Volume. Verified calculations, inventory isolation, CRUD, receipt sharing payload, backup compatibility, chooser routing, and desktop/mobile layouts; runtime dependency audit is clean. Sarvam remains deferred.
 
 - Receipt previews and PDFs now include pack size and measurement unit beside each product name. New sales snapshot these values, order edits retain available snapshots, and legacy receipts fall back to linked inventory details. All four receipt regression tests and the production build pass.
 
-- Added order receipt previews and paginated A5 PDFs with store address/contact, order number/date (India time), saved product names, quantities, selling prices, line totals, and total. Internal costs/margins are excluded; receipts do not confirm payment. Successful submissions open saved order details; existing orders also offer Receipt, Download PDF, and Share PDF. Optional customer name is receipt-only. Web Share opens the OS share sheet for WhatsApp selection, with download fallback. PDF generation remains offline-capable with lazy-loaded/pre-cached assets. Browser checks covered new/existing orders, historical prices, share/fallback and mobile layout; real phone WhatsApp sharing remains to verify. Sarvam troubleshooting is deferred.
+- Added order receipt previews and paginated A5 PDFs with the current store address, labeled contact, GSTIN, Composition Dealer status, supplied Kanaka Mahalakshmi image, order number/date (India time), saved product names, quantities, selling prices, line totals, and total. The centered **Order Receipt** heading has a rounded black border above SMKG. Optional customer names are captured during creation/editing, saved with both order types, shown in history/details, and included in receipts. Internal costs/margins are excluded; receipts do not confirm payment. Existing orders offer Receipt, Download PDF, and Share PDF. Web Share opens the OS share sheet for WhatsApp selection, with download fallback. PDF generation remains offline-capable with lazy-loaded/pre-cached assets. Mobile preview and PDF regression tests pass; real phone WhatsApp sharing remains to verify.
+
+- Updated Worker CORS configuration to allow the production Pages origin and local Vite origins, and documented the local-dev setup. The Worker must be redeployed for local Read List requests to work against the deployed endpoint.
 
 - Created the React, TypeScript, Vite PWA in `frontend/`.
 - Added GitHub Pages deployment workflow in `.github/workflows/deploy.yml`.

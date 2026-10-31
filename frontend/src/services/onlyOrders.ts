@@ -120,7 +120,7 @@ export function onlyOrderNumber(value: string): string {
   return Number.isSafeInteger(sequence) && sequence > 0 ? `OR ${sequence}` : value
 }
 
-export async function saveOnlyOrder(db: typeof inventoryDb, drafts: OnlyOrderDraft[], orderId?: string, sourceMessages?: OnlyOrderSourceMessage[]): Promise<OnlyOrder> {
+export async function saveOnlyOrder(db: typeof inventoryDb, drafts: OnlyOrderDraft[], orderId?: string, sourceMessages?: OnlyOrderSourceMessage[], customerName?: string): Promise<OnlyOrder> {
   const items = parseOnlyOrderLines(drafts)
   return db.transaction('rw', db.onlyOrders, async () => {
     const existing = orderId ? await db.onlyOrders.get(orderId) : undefined
@@ -130,6 +130,7 @@ export async function saveOnlyOrder(db: typeof inventoryDb, drafts: OnlyOrderDra
     const order: OnlyOrder = {
       id: existing?.id ?? crypto.randomUUID(),
       orderNumber: existing ? onlyOrderNumber(existing.orderNumber) : `OR ${sequence}`,
+      customerName: customerName?.trim() ?? existing?.customerName ?? '',
       soldAt: existing?.soldAt ?? now,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -158,6 +159,7 @@ export function isOnlyOrder(value: unknown): value is OnlyOrder {
   if (!value || typeof value !== 'object') return false
   const order = value as Partial<OnlyOrder>
   if (typeof order.id !== 'string' || typeof order.orderNumber !== 'string' ||
+    (order.customerName !== undefined && (typeof order.customerName !== 'string' || order.customerName.length > 120)) ||
     typeof order.soldAt !== 'string' || !Number.isFinite(Date.parse(order.soldAt)) ||
     typeof order.createdAt !== 'string' || typeof order.updatedAt !== 'string' ||
     !Number.isFinite(Date.parse(order.createdAt)) || !Number.isFinite(Date.parse(order.updatedAt)) ||

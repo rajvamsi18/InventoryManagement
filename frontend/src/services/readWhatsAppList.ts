@@ -7,11 +7,16 @@ type ReadListResponse = { items?: unknown; error?: unknown }
 export async function readWhatsAppList(text: string): Promise<ReadListItem[]> {
   if (!WORKER_URL) throw new Error('Read List is not configured yet.')
 
-  const response = await fetch(`${WORKER_URL.replace(/\/+$/, '')}/read-list`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
-  })
+  let response: Response
+  try {
+    response = await fetch(`${WORKER_URL.replace(/\/+$/, '')}/read-list`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+  } catch {
+    throw new Error('Could not reach Read List. Check your internet connection or the Worker CORS configuration.')
+  }
 
   let data: ReadListResponse
   try { data = await response.json() as ReadListResponse } catch { throw new Error('Could not read the response. Please try again.') }
