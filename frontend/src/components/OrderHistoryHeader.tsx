@@ -14,7 +14,7 @@ type Props = {
 }
 
 export function OrderHistoryHeader({ mode, view = 'orders', onSelectMode, onBackToOrders, onAllOrders, onNewOrder, onReadList, openChooser = false, onChooserOpened }: Props) {
-  const [choiceStep, setChoiceStep] = useState<'actions' | 'create' | null>(() => openChooser ? 'actions' : null)
+  const [choiceStep, setChoiceStep] = useState<'actions' | 'create' | null>(() => view === 'orders' || openChooser ? 'actions' : null)
 
   useEffect(() => {
     if (openChooser) onChooserOpened?.()
