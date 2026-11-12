@@ -79,20 +79,18 @@ export function OrderReceipt({ order, items }: Props) {
           {message && <p role="status" className="receipt-status">{message}</p>}
           <article className="receipt-preview" aria-label="Order receipt preview">
             <header className="receipt-store">
-              <div className="receipt-store-top">
-                <div className="receipt-store-tax">
-                  <p>Contact: {STORE.contact}</p>
-                  <p>GSTIN: {STORE.gstin}</p>
-                  <p>{STORE.dealerType}</p>
-                </div>
-                <div className="receipt-brand-block">
-                  <h3 className="receipt-document-title">Bill of Supply</h3>
-                  <div className="receipt-brand-line"><h2>SMKG</h2></div>
-                </div>
-                <img className="receipt-goddess" src={goddessIllustrationUrl} alt="Goddess Kanaka Mahalakshmi" />
+              <h3 className="receipt-document-title">Order Receipt</h3>
+              <div className="receipt-brand-line">
+                <h2>SMKG</h2>
               </div>
-              <strong className="receipt-store-name">Sri Mareswari Kirana &amp; General Stores</strong>
-              <p className="receipt-store-address">{STORE.address}</p>
+              <div className="receipt-store-copy">
+                <strong>Sri Mareswari Kirana &amp; General Stores</strong>
+                <p>{STORE.address}</p>
+                <p>Contact: {STORE.contact}</p>
+                <p>GSTIN: {STORE.gstin}</p>
+                <p>{STORE.dealerType}</p>
+              </div>
+              <img className="receipt-goddess" src={goddessIllustrationUrl} alt="Goddess Kanaka Mahalakshmi" />
             </header>
             <div className="receipt-meta">
               <strong className="receipt-order-identifier">Order Number: {order.orderNumber}</strong>

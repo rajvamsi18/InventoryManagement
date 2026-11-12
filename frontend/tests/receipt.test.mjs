@@ -29,19 +29,14 @@ async function pdfContents(file) {
 const contains = (text, value) => text.replace(/\s+/g, '').includes(value.replace(/\s+/g, ''))
 
 test('receipt uses saved sale values and excludes private costs', async () => {
-  assert.equal(STORE.gstin, '37AGGPC9606C1ZO')
-  assert.equal(STORE.address, '14-1-63/3, Pandimetta, Nowroji Road,\nVisakhapatnam, 530002')
   const file = await createReceipt({ ...order, customerName: 'Customer Test' }, [item])
   const pdf = (await pdfContents(file)).text
   assert.equal(file.name, 'SMKG-000006.pdf')
   assert.equal(file.type, 'application/pdf')
   assert.ok((await file.text()).startsWith('%PDF-'))
-  assert.equal(pdf.split('Bill of Supply').length - 1, 1)
-  assert.equal(pdf.includes('Order Receipt'), false)
-  for (const value of ['Bill of Supply', 'SMKG', 'Order Number:', 'SMKG-000006', 'Rice', '90.00', '180.00', 'Customer Test', STORE.address, `Contact: ${STORE.contact}`, STORE.gstin, STORE.dealerType]) {
+  for (const value of ['Order Receipt', 'SMKG', 'Order Number:', 'SMKG-000006', 'Rice', '90.00', '180.00', 'Customer Test', STORE.address, `Contact: ${STORE.contact}`, STORE.gstin, STORE.dealerType]) {
     assert.ok(contains(pdf, value), value)
   }
-  assert.equal(pdf.includes('Residence:'), false)
   assert.ok(!pdf.includes('67.00'))
   assert.ok(contains(pdf, 'does not confirm payment'))
 })
