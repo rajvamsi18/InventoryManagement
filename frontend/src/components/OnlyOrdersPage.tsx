@@ -15,6 +15,12 @@ import { MobileOnlyOrderEditor } from './MobileOnlyOrderEditor'
 type Props = { onBack: () => void; sharedMessage?: string; onSharedMessageConsumed?: () => void; openChooser?: boolean; onChooserOpened?: () => void }
 const currency = (amount: number) => `Rs. ${amount.toFixed(2)}`
 const mobileQuery = '(max-width: 700px)'
+type HistoryRangePreset = 'all' | 'today' | 'week' | 'month' | 'custom'
+
+function dateInputValue(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
 function subscribeMobile(callback: () => void) {
   const media = window.matchMedia(mobileQuery)
   media.addEventListener('change', callback)
@@ -28,6 +34,9 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed,
   const [customerName, setCustomerName] = useState('')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [orderSearch, setOrderSearch] = useState('')
+  const [historyDateFrom, setHistoryDateFrom] = useState('')
+  const [historyDateTo, setHistoryDateTo] = useState('')
+  const [historyRangePreset, setHistoryRangePreset] = useState<HistoryRangePreset>('all')
   const [historyPage, setHistoryPage] = useState(1)
   const [historyPageSize, setHistoryPageSize] = useState<5 | 10 | 20>(5)
   const [selectedId, setSelectedId] = useState<string>()
@@ -47,12 +56,69 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed,
   const readListDialogRef = useRef<HTMLDialogElement>(null)
   const selected = orders.find(order => order.id === selectedId)
   const selectedOrders = orders.filter(order => selectedOrderIds.includes(order.id))
-  const filteredOrders = orders.filter(order => matchesOrderSearch(order, orderSearch))
+  const dateFilteredOrders = orders.filter(order => {
+    const soldDate = dateInputValue(new Date(order.soldAt))
+    return (!historyDateFrom || soldDate >= historyDateFrom) && (!historyDateTo || soldDate <= historyDateTo)
+  })
+  const filteredOrders = dateFilteredOrders.filter(order => matchesOrderSearch(order, orderSearch))
+  const dateRangeTotal = dateFilteredOrders.reduce((sum, order) => sum + order.totalAmount, 0)
+  const customerTotals = new Map<string, { name: string; total: number }>()
+  for (const order of dateFilteredOrders) {
+    const name = order.customerName?.trim()
+    if (!name) continue
+    const key = name.toLocaleLowerCase()
+    const current = customerTotals.get(key)
+    customerTotals.set(key, { name: current?.name ?? name, total: (current?.total ?? 0) + order.totalAmount })
+  }
+  const topCustomer = [...customerTotals.values()].reduce<{ name: string; total: number } | undefined>(
+    (top, customer) => !top || customer.total > top.total ? customer : top,
+    undefined,
+  )
   const historyPageCount = Math.max(1, Math.ceil(filteredOrders.length / historyPageSize))
   const visibleHistoryPage = Math.min(historyPage, historyPageCount)
   const visibleOrders = filteredOrders.slice((visibleHistoryPage - 1) * historyPageSize, visibleHistoryPage * historyPageSize)
   const nextOrderNumber = `OR ${orders.reduce((highest, order) => Math.max(highest, Number(order.orderNumber.match(/(\d+)$/)?.[1] ?? 0)), 0) + 1}`
   const total = lines.reduce((sum, line) => sum + (Number(line.total) || 0), 0)
+
+  function applyHistoryRange(preset: Exclude<HistoryRangePreset, 'custom'>) {
+    if (preset === 'all') {
+      setHistoryDateFrom('')
+      setHistoryDateTo('')
+    } else {
+      const end = new Date()
+      const start = new Date(end)
+      if (preset === 'week') start.setDate(start.getDate() - 6)
+      if (preset === 'month') {
+        const monthStart = new Date(end.getFullYear(), end.getMonth() - 1, 1)
+        const monthEndDay = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate()
+        start.setFullYear(monthStart.getFullYear(), monthStart.getMonth(), Math.min(end.getDate(), monthEndDay))
+      }
+      setHistoryDateFrom(dateInputValue(start))
+      setHistoryDateTo(dateInputValue(end))
+    }
+    setHistoryRangePreset(preset)
+    setHistoryPage(1)
+    setSelectedOrderIds([])
+  }
+
+  function updateHistoryDateRange(field: 'from' | 'to', value: string) {
+    let from = historyDateFrom
+    let to = historyDateTo
+    if (field === 'from') {
+      from = value
+      if (from && to && from > to) to = from
+      setHistoryDateFrom(from)
+      setHistoryDateTo(to)
+    } else {
+      to = value
+      if (from && to && to < from) from = to
+      setHistoryDateFrom(from)
+      setHistoryDateTo(to)
+    }
+    setHistoryRangePreset(from || to ? 'custom' : 'all')
+    setHistoryPage(1)
+    setSelectedOrderIds([])
+  }
 
   useEffect(() => {
     const dialog = readListDialogRef.current
@@ -263,7 +329,24 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed,
           onChooserOpened={onChooserOpened}
         />
         {historyOpen && <>
-        <section className="metrics"><div><span>Orders</span><strong>{orders.length}</strong></div><div><span>Average order</span><strong>{currency(orders.length ? orders.reduce((sum, order) => sum + order.totalAmount, 0) / orders.length : 0)}</strong></div><div><span>Total amount</span><strong>{currency(orders.reduce((sum, order) => sum + order.totalAmount, 0))}</strong></div></section>
+        <section className="order-history-date-range" aria-label="Filter order history by date">
+          <div className="order-history-range-presets" role="group" aria-label="Quick date ranges">
+            <button type="button" aria-pressed={historyRangePreset === 'today'} onClick={() => applyHistoryRange('today')}>Today</button>
+            <button type="button" aria-pressed={historyRangePreset === 'week'} onClick={() => applyHistoryRange('week')}>Last 7 days</button>
+            <button type="button" aria-pressed={historyRangePreset === 'month'} onClick={() => applyHistoryRange('month')}>Last month</button>
+            <button type="button" aria-pressed={historyRangePreset === 'all'} onClick={() => applyHistoryRange('all')}>All dates</button>
+          </div>
+          <div className="order-history-range-inputs">
+            <label>From<input type="date" value={historyDateFrom} max={historyDateTo || undefined} onChange={event => updateHistoryDateRange('from', event.target.value)} /></label>
+            <label>To<input type="date" value={historyDateTo} min={historyDateFrom || undefined} onChange={event => updateHistoryDateRange('to', event.target.value)} /></label>
+          </div>
+        </section>
+        <section className="metrics order-history-metrics">
+          <div><span>Orders</span><strong>{dateFilteredOrders.length}</strong></div>
+          <div><span>Average order</span><strong>{currency(dateFilteredOrders.length ? dateRangeTotal / dateFilteredOrders.length : 0)}</strong></div>
+          <div><span>Total amount</span><strong>{currency(dateRangeTotal)}</strong></div>
+          <div><span>Highest-spending customer</span><strong className="metric-text">{topCustomer?.name ?? '—'}</strong>{topCustomer && <small>{currency(topCustomer.total)} total</small>}</div>
+        </section>
         <OrderHistorySearch value={orderSearch} onChange={value => { setOrderSearch(value); setHistoryPage(1); setSelectedOrderIds([]) }} />
         {!selectedOrders.length && filteredOrders.length > 0 && <p className="selection-hint">Tap an order for details · Long press to select</p>}
         {filteredOrders.length ? <div className={`orders-table ${selectedOrders.length ? 'selection-mode' : ''}`}>
@@ -280,7 +363,7 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed,
               <button type="button" className="icon-button" title="Clear selection" aria-label="Clear selection" disabled={deleting} onClick={() => setSelectedOrderIds([])}><X size={16} /></button>
             </div>
           </div>}
-        </div> : <p className="muted">{orders.length ? 'No orders match your search.' : 'No orders yet.'}</p>}
+        </div> : <p className="muted">{!orders.length ? 'No orders yet.' : !dateFilteredOrders.length ? 'No orders in this date range.' : 'No orders match your search.'}</p>}
         {filteredOrders.length > 0 && <OrderHistoryPagination page={visibleHistoryPage} pageSize={historyPageSize} total={filteredOrders.length} onPageChange={setHistoryPage} onPageSizeChange={pageSize => { setHistoryPageSize(pageSize); setHistoryPage(1) }} />}
         </>}
       </div></section>

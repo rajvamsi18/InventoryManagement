@@ -32,6 +32,8 @@ Only Order records use `OR 1`, `OR 2`, and so on, without zero padding, and embe
 
 In Only Order history, long press a row to reveal checkboxes. Select individual orders or use Select all orders. One selection offers Edit/Delete; multiple selections offer Delete, with confirmation before removing them. Clear selection exits selection mode. Only Order bulk deletion does not change inventory. The detail-page Edit order and Delete controls are compact on mobile.
 
+Only Order history also supports From/To date filters and quick ranges for Today, Last 7 days, and Last month. The order count, average, total amount, and highest-spending named customer update to match the selected date range; the order list combines that range with text search.
+
 Backup version 4 includes both order flows. Import accepts versions 1-4; older backups contain no Only Order records. Receipts for Only Order use the Volume text exactly as entered.
 
 On mobile (up to 700px wide), Only Order creation/editing shows a compact product list rather than an input grid. Tap a product row or its pencil icon to edit it in a bottom sheet. **Add & next** adds the product to the local draft and clears the editor for another; **Done** adds/saves that product and returns to the list. Closing the editor discards only its unfinished changes. The fixed bottom bar keeps the order total, Add product, Submit/Save order, and a Cancel order icon accessible. Product rows are not persisted until Submit/Save order. Desktop keeps the existing input grid. Real phone keyboard behavior should be reviewed on-device.
