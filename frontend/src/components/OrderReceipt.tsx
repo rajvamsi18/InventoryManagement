@@ -100,7 +100,7 @@ export function OrderReceipt({ order, items }: Props) {
             <table>
               <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Amount</th></tr></thead>
               <tbody>{items.map(item => (
-                <tr key={item.id}><td>{receiptProductName(item)}</td><td>{item.quantitySold}</td><td>{item.unitSellingPrice.toFixed(2)}</td><td>{item.lineTotal.toFixed(2)}</td></tr>
+                <tr key={item.id}><td><strong>{receiptProductName(item)}</strong></td><td>{item.quantitySold}</td><td>{item.unitSellingPrice.toFixed(2)}</td><td>{item.lineTotal.toFixed(2)}</td></tr>
               ))}</tbody>
               <tfoot><tr><th colSpan={3}>Total (INR)</th><td>{order.totalAmount.toFixed(2)}</td></tr></tfoot>
             </table>

@@ -112,7 +112,7 @@ export async function createReceipt(order: SalesOrder, items: SalesOrderItem[]):
       body: [
         ['Product', 'Qty', 'Price (INR)', 'Amount (INR)'].map((text, index) => ({ text, bold: true, color: '#fff', alignment: index ? 'right' as const : 'left' as const })),
         ...items.map(item => [
-          { text: receiptText(receiptProductName(item)) },
+          { text: receiptText(receiptProductName(item)), bold: true },
           { text: String(item.quantitySold), alignment: 'right' as const },
           { text: item.unitSellingPrice.toFixed(2), alignment: 'right' as const },
           { text: item.lineTotal.toFixed(2), alignment: 'right' as const },
