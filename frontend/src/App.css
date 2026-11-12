@@ -58,6 +58,7 @@
 .order-history-range-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 200px)); gap: 10px; }
 .order-history-range-inputs label { display: grid; gap: 5px; color: var(--muted); font-size: 11px; font-weight: 700; }
 .order-history-range-inputs input { width: 100%; min-width: 0; min-height: 40px; border: 1px solid var(--line); border-radius: 5px; padding: 7px 9px; color: var(--ink); background: #fff; font: inherit; font-size: 13px; }
+@media (max-width: 520px) { .order-history-range-inputs { column-gap: 16px; } }
 .order-history-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .order-history-metrics .metric-text { overflow-wrap: anywhere; }
 .order-history-metrics small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
