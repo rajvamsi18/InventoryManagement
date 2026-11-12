@@ -97,6 +97,66 @@ export type OnlyOrderSourceMessage = { id: string; text: string }
 
 export type OnlyOrder = SalesOrder & { items: OnlyOrderLine[]; sourceMessages?: OnlyOrderSourceMessage[] }
 
+export type Customer = {
+  id: string
+  name: string
+  normalizedName: string
+  phone?: string
+  createdAt: string
+  updatedAt: string
+  archivedAt?: string
+}
+
+export type CreditOrderLine = OnlyOrderLine
+
+export type CreditOrder = {
+  id: string
+  orderNumber: string
+  customerId: string
+  customerName: string
+  soldAt: string
+  totalAmount: number
+  items: CreditOrderLine[]
+  createdAt: string
+  updatedAt?: string
+  sourceMessages?: OnlyOrderSourceMessage[]
+}
+
+export type CreditPaymentMethod = 'Cash' | 'UPI' | 'Bank transfer' | 'Other'
+
+export type CreditPayment = {
+  id: string
+  paymentNumber: string
+  customerId: string
+  customerName: string
+  amount: number
+  paidAt: string
+  method: CreditPaymentMethod
+  reference?: string
+  createdAt: string
+  updatedAt?: string
+}
+
+export type CreditAdjustment = {
+  id: string
+  customerId: string
+  targetType: 'order' | 'payment'
+  targetId: string
+  reason: string
+  createdAt: string
+}
+
+export type CreditHistory = {
+  id: string
+  customerId: string
+  action: 'edit' | 'void'
+  reason?: string
+  createdAt: string
+} & (
+  | { targetType: 'order'; targetId: string; before: CreditOrder; after?: CreditOrder }
+  | { targetType: 'payment'; targetId: string; before: CreditPayment; after?: CreditPayment }
+)
+
 export type ProductCategoryOption = {
   id: string
   name: string
@@ -117,6 +177,11 @@ const inventoryDb = new Dexie('grocery-inventory') as Dexie & {
   orders: EntityTable<SalesOrder, 'id'>
   orderItems: EntityTable<SalesOrderItem, 'id'>
   onlyOrders: EntityTable<OnlyOrder, 'id'>
+  customers: EntityTable<Customer, 'id'>
+  creditOrders: EntityTable<CreditOrder, 'id'>
+  creditPayments: EntityTable<CreditPayment, 'id'>
+  creditAdjustments: EntityTable<CreditAdjustment, 'id'>
+  creditHistory: EntityTable<CreditHistory, 'id'>
   categories: EntityTable<ProductCategoryOption, 'id'>
   productOptions: EntityTable<ProductOption, 'id'>
 }
@@ -221,6 +286,23 @@ inventoryDb.version(9).stores({
   categories: 'id, name',
   productOptions: 'id, type, &[type+name]',
   onlyOrders: 'id, orderNumber, soldAt, updatedAt',
+})
+
+inventoryDb.version(10).stores({
+  products: 'id, name, brand, category, unit, packageType, updatedAt',
+  orders: 'id, orderNumber, soldAt, updatedAt',
+  orderItems: 'id, orderId, productId, productName, category',
+  categories: 'id, name',
+  productOptions: 'id, type, &[type+name]',
+  onlyOrders: 'id, orderNumber, soldAt, updatedAt',
+  customers: 'id, name, normalizedName, phone, archivedAt',
+  creditOrders: 'id, customerId, orderNumber, soldAt, [customerId+soldAt]',
+  creditPayments: 'id, customerId, paymentNumber, paidAt, [customerId+paidAt]',
+  creditAdjustments: 'id, customerId, targetId, &[targetType+targetId]',
+})
+
+inventoryDb.version(11).stores({
+  creditHistory: 'id, customerId, targetId, targetType, action, createdAt, [customerId+targetId]',
 })
 
 inventoryDb.on('populate', (transaction) => transaction.table('productOptions').bulkAdd(defaultProductOptions(new Date().toISOString())))

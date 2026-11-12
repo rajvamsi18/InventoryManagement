@@ -6,16 +6,18 @@ type Props = {
   total: number
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: PageSize) => void
+  itemLabel?: string
+  ariaLabel?: string
 }
 
-export function OrderHistoryPagination({ page, pageSize, total, onPageChange, onPageSizeChange }: Props) {
+export function OrderHistoryPagination({ page, pageSize, total, onPageChange, onPageSizeChange, itemLabel = 'Orders', ariaLabel = 'Order history pages' }: Props) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
   const firstOrder = total ? (page - 1) * pageSize + 1 : 0
   const lastOrder = Math.min(page * pageSize, total)
 
-  return <nav className="order-history-pagination" aria-label="Order history pages">
-    <label>Orders per page
-      <select aria-label="Orders per page" value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value) as PageSize)}>
+  return <nav className="order-history-pagination" aria-label={ariaLabel}>
+    <label>{itemLabel} per page
+      <select aria-label={`${itemLabel} per page`} value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value) as PageSize)}>
         <option value={5}>5</option><option value={10}>10</option><option value={20}>20</option>
       </select>
     </label>

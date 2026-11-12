@@ -12,7 +12,7 @@ import { matchesOrderSearch } from '../services/orderSearch'
 import { OrderRow } from './OrderRow'
 import { MobileOnlyOrderEditor } from './MobileOnlyOrderEditor'
 
-type Props = { onBack: () => void; sharedMessage?: string; onSharedMessageConsumed?: () => void; openChooser?: boolean; onChooserOpened?: () => void }
+type Props = { onBack: () => void; onSelectCredit: () => void; sharedMessage?: string; onSharedMessageConsumed?: () => void; openChooser?: boolean; onChooserOpened?: () => void }
 const currency = (amount: number) => `Rs. ${amount.toFixed(2)}`
 const mobileQuery = '(max-width: 700px)'
 type HistoryRangePreset = 'all' | 'today' | 'week' | 'month' | 'custom'
@@ -27,7 +27,7 @@ function subscribeMobile(callback: () => void) {
   return () => media.removeEventListener('change', callback)
 }
 
-export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed, openChooser = false, onChooserOpened }: Props) {
+export function OnlyOrdersPage({ onBack, onSelectCredit, sharedMessage, onSharedMessageConsumed, openChooser = false, onChooserOpened }: Props) {
   const isMobile = useSyncExternalStore(subscribeMobile, () => window.matchMedia(mobileQuery).matches, () => false)
   const orders = useLiveQuery(async () => (await inventoryDb.onlyOrders.orderBy('soldAt').reverse().toArray()).map(order => ({ ...order, orderNumber: onlyOrderNumber(order.orderNumber) })), []) ?? []
   const [mode, setMode] = useState<'list' | 'edit' | 'detail'>('list')
@@ -321,7 +321,7 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed,
           mode="only"
           view={historyOpen ? 'history' : 'orders'}
           onBackToOrders={() => { setHistoryOpen(false); setOrderSearch(''); setHistoryPage(1); setSelectedOrderIds([]) }}
-          onSelectMode={next => { if (next === 'inventory' && !deleting) onBack() }}
+          onSelectMode={next => { if (next === 'inventory' && !deleting) onBack(); else if (next === 'credit' && !deleting) onSelectCredit() }}
           onAllOrders={() => { setHistoryOpen(true); setHistoryPage(1); setOrderSearch(''); setSelectedOrderIds([]) }}
           onReadList={() => openReadList()}
           onNewOrder={() => { if (deleting) return; setSelectedOrderIds([]); setEditingId(undefined); setSourceMessages([]); setLines([emptyOnlyOrderLine()]); setCustomerName(''); setError(''); setMode('edit') }}

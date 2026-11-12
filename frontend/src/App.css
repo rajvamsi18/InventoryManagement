@@ -10,7 +10,7 @@
 .only-order-detail-heading .order-number-heading { display: grid; align-items: start; gap: 2px; margin: 0; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 700; line-height: 1.5; }
 @media (max-width: 800px) { .basket-heading .order-number-heading { font-size: 35px; }.basket-heading .customer-name-highlight { font-size: 34px; } }
 @media (max-width: 700px) { .only-order-detail-heading { flex-wrap: wrap; gap: 12px; }.only-order-detail-heading > div:first-child { flex: 1 1 160px; min-width: 0; }.only-order-detail-heading h1 { font-size: 32px; white-space: nowrap; margin-bottom: 0; }.only-order-detail-heading .back-button { white-space: nowrap; }.only-order-detail-actions { margin-left: auto; } }
-.order-history-modes { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; margin: 0 0 16px; border: 1px solid var(--line); border-radius: 6px; }
+.order-history-modes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; width: min(100%, 520px); padding: 6px; margin: 0 0 16px; border: 1px solid var(--line); border-radius: 6px; }
 .basket-nav-actions .back-button { display: inline-flex; align-items: center; gap: 6px; margin: 0; line-height: 1.2; }
 .basket-nav-actions .back-button svg { display: block; flex: 0 0 auto; }
 @media (max-width: 520px) { .topbar { min-height: 64px; }.connection-status { padding: 7px; font-size: 0; }.connection-status svg { width: 17px; }.tabs { gap: 3px; padding: 4px; }.tabs button { padding: 10px 4px; font-size: 12px; }.metrics { grid-template-columns: 1fr 1fr; gap: 9px; }.metrics > div { min-height: 105px; padding: 16px; }.metrics strong { font-size: 22px; }.backup-bar { align-items: stretch; flex-direction: column; }.backup-actions button { flex: 1; justify-content: center; }.catalog-tools { flex-direction: column; }.catalog-tools select { width: 100%; }.product-card-main { grid-template-columns: 46px minmax(0, 1fr); }.product-monogram { width: 44px; height: 52px; }.product-price { grid-column: 2; text-align: left; }.product-row { grid-template-columns: minmax(0, 1fr) 86px 62px; }.product-row > div:nth-child(3) { display: none; }.form-grid { grid-template-columns: 1fr; }.sale-line { grid-template-columns: 1fr 60px 75px; }.sale-line button { grid-column: 1 / -1; justify-self: start; padding: 0; }.panel, .catalog-panel, .form-panel, .option-manager { padding: 18px; }.basket-heading .order-number-heading { font-size: 32px; }.basket-heading .customer-name-highlight { font-size: 31px; } }
@@ -62,6 +62,75 @@
 .order-history-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .order-history-metrics .metric-text { overflow-wrap: anywhere; }
 .order-history-metrics small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
+.credit-orders-page { display: grid; align-content: start; gap: 18px; }
+.credit-orders-page.credit-orders-home { display: block; }
+.credit-page-heading { display: grid; justify-items: start; gap: 14px; padding-top: 24px; }
+.credit-page-heading .back-button { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; margin: 0; padding: 4px 0; line-height: 1.4; }
+.credit-page-heading .back-button svg { display: block; flex: 0 0 auto; }
+.credit-page-heading h2 { max-width: 100%; margin: 0; color: var(--ink); font-family: Fraunces, Georgia, serif; font-size: 24px; overflow-wrap: anywhere; }
+.credit-order-identity { display: grid; gap: 2px; font-size: 20px; line-height: 1.4; }
+.credit-order-number { white-space: nowrap; }
+.credit-order-identity .customer-name-highlight { font-size: 20px; }
+.credit-customer-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.credit-customer-tools .order-history-search { flex: 1 1 260px; margin: 0; }
+.credit-customer-status { display: inline-flex; justify-self: start; gap: 4px; border: 1px solid var(--line); border-radius: 6px; padding: 4px; }
+.credit-customer-status button { min-height: 34px; border: 0; border-radius: 4px; padding: 7px 12px; color: var(--pine); background: transparent; font-size: 12px; font-weight: 700; }
+.credit-customer-status button[aria-pressed="true"] { color: #fff; background: var(--pine); }
+.credit-customer-list { display: grid; }
+.credit-customer-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-width: 0; border: 0; border-top: 1px solid var(--line); padding: 14px 4px; color: var(--ink); background: transparent; text-align: left; }
+.credit-customer-row > span { display: grid; gap: 4px; min-width: 0; }
+.credit-customer-row > span:last-child { flex: 0 0 auto; text-align: right; }
+.credit-customer-row strong { overflow-wrap: anywhere; font-size: 13px; }
+.credit-customer-row small { color: var(--muted); font-size: 11px; }
+.credit-customer-row:hover { background: var(--mint); }
+.credit-customer-form { display: grid; gap: 14px; width: min(100%, 480px); }
+.credit-customer-form label, .credit-order-line label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.credit-customer-form input, .credit-customer-form select, .credit-order-line input { width: 100%; min-width: 0; min-height: 42px; border: 1px solid var(--line); border-radius: 5px; padding: 9px 11px; color: var(--ink); background: #fff; font: inherit; font-size: 16px; font-weight: 400; }
+.credit-account-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.credit-account-actions, .credit-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+.credit-account-actions button, .credit-form-actions button { min-height: 40px; }
+.credit-archive-hint { color: var(--muted); font-size: 11px; }
+.credit-section-title { margin: 4px 0 0; color: var(--ink); font-size: 15px; }
+.credit-activity-heading, .credit-activity-selection-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.credit-activity-selection-actions { color: var(--muted); font-size: 12px; }
+.credit-add-message { justify-self: start; }
+.credit-activity-list { display: grid; }
+.credit-activity-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px 14px; border-top: 1px solid var(--line); padding: 13px 4px; }
+.credit-activity-row.is-selected { background: var(--mint); }
+.credit-activity-row.selection-mode { grid-template-columns: 18px minmax(0, 1fr) auto; }
+.credit-activity-row > input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--pine); }
+.credit-activity-description { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.credit-activity-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; min-width: 0; width: 100%; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; font: inherit; cursor: pointer; touch-action: pan-y; user-select: none; }
+.credit-activity-main:focus-visible { outline: 2px solid var(--pine); outline-offset: 3px; }
+.credit-activity-row strong { color: var(--ink); font-size: 12px; }
+.credit-activity-row time, .credit-activity-row small { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.credit-activity-row.is-voided > div:first-child > strong { text-decoration: line-through; color: var(--muted); }
+.credit-activity-amount { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.credit-activity-amount > strong { white-space: nowrap; }
+.credit-activity-amount .icon-button { width: 32px; height: 32px; padding: 6px; }
+.credit-activity-actions { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 3px; }
+.credit-activity-actions button { min-height: 36px; }
+.credit-dialog-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / 38%); }
+.credit-void-dialog { width: min(440px, 100%); border: 1px solid var(--line); border-radius: 8px; padding: 20px; color: var(--ink); background: #fff; box-shadow: 0 12px 40px rgb(0 0 0 / 18%); }
+.credit-void-dialog h2 { margin: 0 0 8px; font-size: 19px; }
+.credit-void-dialog p { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+.credit-void-dialog form, .credit-void-dialog label { display: grid; gap: 10px; }
+.credit-void-dialog label { color: var(--muted); font-size: 12px; font-weight: 700; }
+.credit-void-dialog textarea { width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: 5px; padding: 10px; color: var(--ink); background: #fff; font: inherit; font-size: 14px; }
+.credit-void-dialog .credit-form-actions { justify-content: flex-end; }
+.credit-balance-note { margin: 0; color: var(--muted); }
+.credit-payment-balances { display: grid; gap: 6px; }
+.credit-payment-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+.credit-payment-actions button { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 44px; margin: 0; padding: 10px 12px; }
+.credit-payment-actions .back-button { border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.credit-order-form { display: grid; gap: 12px; }
+.credit-order-line { display: grid; grid-template-columns: minmax(120px, 1.3fr) minmax(95px, 1fr) repeat(3, minmax(75px, .7fr)) 36px; align-items: end; gap: 10px; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 12px; }
+.credit-order-line legend { padding: 0 5px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.credit-order-line .icon-button { width: 36px; height: 42px; padding: 8px; }
+.credit-form-actions { justify-content: flex-end; }
+.credit-form-actions .back-button:first-child { margin-right: auto; }
+.credit-order-form .voice-error { margin: 0; }
+@media (max-width: 1000px) { .credit-order-line { grid-template-columns: repeat(2, minmax(0, 1fr)); }.credit-order-line .icon-button { justify-self: start; } }
 .order-history-panel .selection-hint { margin: 0 !important; }
 .order-history-search { display: flex; align-items: center; gap: 9px; max-width: 560px; min-height: 42px; margin: 0 0 12px; border: 1px solid var(--line); border-radius: 6px; padding: 0 11px; color: var(--muted); background: #fff; }
 .order-history-search:focus-within { border-color: var(--pine); box-shadow: 0 0 0 2px rgb(23 96 68 / 10%); }
@@ -109,8 +178,8 @@
 .mobile-product-prices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .mobile-product-sheet footer { position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--line); }
 .mobile-product-sheet footer button { min-height: 44px; justify-content: center; font-size: 12px; }
-.order-history-modes { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; margin: 2px 0 16px; border: 1px solid var(--line); border-radius: 6px; }
-.order-history-modes button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 12px; border: 0; border-radius: 4px; color: var(--pine); background: transparent; font-size: 12px; font-weight: 700; }
+.order-history-modes { margin-top: 2px; }
+.order-history-modes button { display: inline-flex; align-items: center; justify-content: flex-start; gap: 7px; width: 100%; min-height: 42px; padding: 9px 12px; border: 0; border-radius: 4px; color: var(--pine); background: transparent; font-size: 12px; font-weight: 700; }
 .order-history-modes button[aria-pressed="true"] { color: #fff; background: var(--pine); }
 .only-order-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .only-order-line { display: grid; grid-template-columns: minmax(140px, 2fr) minmax(120px, 1.5fr) repeat(3, minmax(75px, 1fr)) 36px; gap: 12px; align-items: end; padding: 18px 0; border-bottom: 1px solid var(--line); }

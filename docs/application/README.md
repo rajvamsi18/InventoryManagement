@@ -34,7 +34,23 @@ In Only Order history, long press a row to reveal checkboxes. Select individual 
 
 Only Order history also supports From/To date filters and quick ranges for Today, Last 7 days, and Last month. The order count, average, total amount, and **Top Customer** (the named customer with the highest spend in the range) update to match the selected dates; the order list combines that range with text search.
 
-Backup version 4 includes both order flows. Import accepts versions 1-4; older backups contain no Only Order records. Receipts for Only Order use the Volume text exactly as entered.
+## Credit Orders
+
+Credit Orders are a separate Sales flow for purchases paid later. Choose **With list** to parse a WhatsApp list into editable draft items, or **Without list** to enter items manually. Both use free-text product lines and do not change inventory. Select an existing customer or quick-add a customer with an optional phone number, then save credit purchases to that customer's account. Customer details can be edited; accounts can be archived only after the balance reaches zero and later restored.
+
+The customer account shows active credit orders and payments in date order. Tap a row to edit it; edits keep the original ID, order/payment number, and creation date. Long press a row to enter checkbox selection mode, select multiple orders/payments, then use the bin beside Account activity to delete the selection. Each row also has its own bin. Deletion requires a reason, removes entries from normal activity, and retains them for audit. A selection that would leave payments above remaining purchases is rejected without changing any entries.
+
+Record full or partial payments with a date, method, and optional reference. Payments reduce the customer account balance rather than settling individual orders; overpayments are rejected. Every order/payment edit or deletion stores a linked before/after snapshot or void snapshot in a separate audit table. Historical voided entries are not shown as struck-through activity. Credit order editing includes **With list / Add message**, source-message comparison, and edit/delete source controls. Existing lines and prices are preserved when another message is added; source changes are saved with the order. The first version does not enforce credit limits, due dates, or interest.
+
+Archive customer opens an in-app confirmation. Accounts with an outstanding balance show the amount to settle first; zero-balance accounts move to Archived, where they can be restored. All Credit Order back links have spacing below the Sales tabs.
+
+Credit order entry/editing shows the order number with the customer name beneath it. Product names and quantities appear inside the editor, not in account activity rows. Account Activity and the Active/Archived Credit Customer lists have independent 5/10/20 pagination with Previous/Next controls and visible item counts. Customer search applies before pagination; account balances always use the full ledger, not just the visible page.
+
+Payment editing shows the payment number with the customer name beneath it. Outstanding balance and Payment edit limit appear on separate lines, with aligned, equal-width Cancel and Save changes buttons. Switching between From Inventory, Only Order, and Credit Order keeps the Sales choice panel in the same position.
+
+Credit customer balances (Active and Archived), the customer Outstanding balance tile, account activity amounts, and payment balance/edit-limit lines display two-decimal numbers without an `Rs.` prefix. Activity amounts retain their plus/minus signs, and credit purchases show only their order number (for example `CR 1`) without a Credit Order prefix. Receipt formatting is unchanged.
+
+Backup version 6 includes inventory, Only Order, Credit Order, source messages, and linked audit history. Import accepts versions 1-6; v5 credit ledgers remain supported, and older backups contain no Credit Order records. Receipts for Only Order use the Volume text exactly as entered.
 
 On mobile (up to 700px wide), Only Order creation/editing shows a compact product list rather than an input grid. Tap a product row or its pencil icon to edit it in a bottom sheet. **Add & next** adds the product to the local draft and clears the editor for another; **Done** adds/saves that product and returns to the list. Closing the editor discards only its unfinished changes. The fixed bottom bar keeps the order total, Add product, Submit/Save order, and a Cancel order icon accessible. Product rows are not persisted until Submit/Save order. Desktop keeps the existing input grid. Real phone keyboard behavior should be reviewed on-device.
 
@@ -83,4 +99,4 @@ New local orders use sequential numbers such as `SMKG-000001`. The next number i
 - Products with sales history cannot be deleted because doing so would orphan order reporting.
 - The Products catalog shows at most 12 items per page and opens a full product performance view.
 - Product deletion is currently allowed even if it has historical sales. The next product-management enhancement should change this to archive behavior to preserve reporting integrity.
-- Backup version 4 contains products, catalog options, inventory orders/items, and independent Only Order records. Versions 1-3 remain importable.
+- Backup version 6 contains products, catalog options, inventory orders/items, Only Order records, and Credit Order customers, sales, payments, void adjustments, and edit/void audit snapshots. Versions 1-5 remain importable.

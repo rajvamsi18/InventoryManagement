@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, ClipboardList, Package, ReceiptText } from 'lucide-react'
+import { ArrowLeft, ClipboardList, CreditCard, Package, ReceiptText } from 'lucide-react'
 
 type Props = {
-  mode: 'inventory' | 'only'
+  mode: 'inventory' | 'only' | 'credit'
   view?: 'orders' | 'history'
-  onSelectMode: (mode: 'inventory' | 'only') => void
+  onSelectMode: (mode: 'inventory' | 'only' | 'credit') => void
   onBackToOrders?: () => void
   onAllOrders: () => void
   onNewOrder: () => void
   onReadList?: () => void
+  readListLabel?: string
+  readListDescription?: string
   openChooser?: boolean
   onChooserOpened?: () => void
 }
 
-export function OrderHistoryHeader({ mode, view = 'orders', onSelectMode, onBackToOrders, onAllOrders, onNewOrder, onReadList, openChooser = false, onChooserOpened }: Props) {
+export function OrderHistoryHeader({ mode, view = 'orders', onSelectMode, onBackToOrders, onAllOrders, onNewOrder, onReadList, readListLabel = 'From list', readListDescription = 'Read a WhatsApp order list', openChooser = false, onChooserOpened }: Props) {
   const [choiceStep, setChoiceStep] = useState<'actions' | 'create' | null>(() => view === 'orders' || openChooser ? 'actions' : null)
 
   useEffect(() => {
@@ -41,6 +43,7 @@ export function OrderHistoryHeader({ mode, view = 'orders', onSelectMode, onBack
       <div className="order-history-modes" role="group" aria-label="Order flow">
         <button type="button" aria-pressed={mode === 'inventory'} onClick={() => { onSelectMode('inventory'); setChoiceStep('actions') }}><Package size={16} /> From Inventory</button>
         <button type="button" aria-pressed={mode === 'only'} onClick={() => { onSelectMode('only'); setChoiceStep('actions') }}><ReceiptText size={16} /> Only Order</button>
+        <button type="button" aria-pressed={mode === 'credit'} onClick={() => { onSelectMode('credit'); setChoiceStep('actions') }}><CreditCard size={16} /> Credit Order</button>
       </div>
     </>}
     {view === 'orders' && choiceStep && <div className="order-choice-options order-choice-inline" role="group" aria-label={choiceStep === 'actions' ? 'Order actions' : 'Create order options'}>
@@ -48,7 +51,7 @@ export function OrderHistoryHeader({ mode, view = 'orders', onSelectMode, onBack
         <button type="button" className="order-choice-option" onClick={chooseAllOrders}><ClipboardList size={19} /><span><strong>All Orders</strong><small>View saved orders</small></span></button>
         <button type="button" className="order-choice-option" onClick={chooseCreateOrder}><Package size={19} /><span><strong>Create Order</strong><small>Start a new order</small></span></button>
       </> : <>
-        <button type="button" className="order-choice-option" onClick={() => { setChoiceStep(null); onReadList?.() }}><ClipboardList size={19} /><span><strong>From list</strong><small>Read a WhatsApp order list</small></span></button>
+        <button type="button" className="order-choice-option" onClick={() => { setChoiceStep(null); onReadList?.() }}><ClipboardList size={19} /><span><strong>{readListLabel}</strong><small>{readListDescription}</small></span></button>
         <button type="button" className="order-choice-option" onClick={() => { setChoiceStep(null); onNewOrder() }}><Package size={19} /><span><strong>Without list</strong><small>Enter order items manually</small></span></button>
         <button type="button" className="order-choice-back" onClick={() => setChoiceStep('actions')}><ArrowLeft size={15} /> Back</button>
       </>}

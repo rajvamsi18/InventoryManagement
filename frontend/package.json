@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "test:receipt": "node --experimental-strip-types --test tests/receipt.test.mjs",
     "test:only-orders": "node --experimental-strip-types --test tests/onlyOrders.test.mjs",
+    "test:credit-orders": "node --experimental-strip-types --test tests/creditOrders.test.mjs",
     "lint": "oxlint",
     "preview": "vite preview"
   },

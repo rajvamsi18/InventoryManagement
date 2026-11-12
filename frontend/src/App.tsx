@@ -32,6 +32,7 @@ type Tab = "Home" | "Products" | "Inventory" | "Sales";
 const currency = (amount: number) => `Rs. ${amount.toFixed(2)}`;
 const OrderReceipt = lazy(() => import("./components/OrderReceipt").then(module => ({ default: module.OrderReceipt })));
 const OnlyOrdersPage = lazy(() => import("./components/OnlyOrdersPage").then(module => ({ default: module.OnlyOrdersPage })));
+const CreditOrdersPage = lazy(() => import("./components/CreditOrdersPage").then(module => ({ default: module.CreditOrdersPage })));
 
 function sharedOnlyOrderMessage() {
   const params = new URLSearchParams(window.location.search);
@@ -57,7 +58,7 @@ function App() {
   const [newProductPrefill, setNewProductPrefill] = useState<VoiceProductPrefill>();
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [viewingOrder, setViewingOrder] = useState<SalesOrder>();
-  const [salesMode, setSalesMode] = useState<'inventory' | 'only'>(() => sharedOnlyOrderMessage() ? 'only' : 'inventory');
+  const [salesMode, setSalesMode] = useState<'inventory' | 'only' | 'credit'>(() => sharedOnlyOrderMessage() ? 'only' : 'inventory');
   const [inventoryHistoryOpen, setInventoryHistoryOpen] = useState(false);
   const [inventoryOrderSearch, setInventoryOrderSearch] = useState("");
   const [inventoryHistoryPage, setInventoryHistoryPage] = useState(1);
@@ -431,20 +432,32 @@ function App() {
       const imported = await readBackup(file);
       await inventoryDb.transaction(
         "rw",
-        inventoryDb.products,
-        inventoryDb.productOptions,
-        inventoryDb.orders,
-        inventoryDb.orderItems,
-        inventoryDb.onlyOrders,
+        [
+          inventoryDb.products,
+          inventoryDb.productOptions,
+          inventoryDb.orders,
+          inventoryDb.orderItems,
+          inventoryDb.onlyOrders,
+          inventoryDb.customers,
+          inventoryDb.creditOrders,
+          inventoryDb.creditPayments,
+          inventoryDb.creditAdjustments,
+          inventoryDb.creditHistory,
+        ],
         async () => {
           await inventoryDb.products.bulkPut(imported.products);
           await inventoryDb.productOptions.bulkPut(imported.productOptions);
           await inventoryDb.orders.bulkPut(imported.orders);
           await inventoryDb.orderItems.bulkPut(imported.orderItems);
           await inventoryDb.onlyOrders.bulkPut(imported.onlyOrders);
+          await inventoryDb.customers.bulkPut(imported.customers);
+          await inventoryDb.creditOrders.bulkPut(imported.creditOrders);
+          await inventoryDb.creditPayments.bulkPut(imported.creditPayments);
+          await inventoryDb.creditAdjustments.bulkPut(imported.creditAdjustments);
+          await inventoryDb.creditHistory.bulkPut(imported.creditHistory);
         },
       );
-      setBackupStatus(`Imported ${imported.products.length} products and ${imported.onlyOrders.length} Only Order records.`);
+      setBackupStatus(`Imported ${imported.products.length} products, ${imported.onlyOrders.length} Only Order records, ${imported.creditOrders.length} Credit Orders, ${imported.customers.length} customers, and ${imported.creditPayments.length} payments.`);
     } catch (error) {
       setBackupStatus(
         error instanceof Error ? error.message : "Could not import backup.",
@@ -1144,7 +1157,11 @@ function App() {
       {tab === "Sales" && (
         salesMode === 'only' ? (
           <Suspense fallback={<p role="status">Loading orders...</p>}>
-            <OnlyOrdersPage onBack={() => { setSalesMode('inventory'); setInventoryHistoryOpen(false); setOrderChooserPending(true) }} sharedMessage={sharedMessage} onSharedMessageConsumed={() => setSharedMessage('')} openChooser={orderChooserPending} onChooserOpened={() => setOrderChooserPending(false)} />
+            <OnlyOrdersPage onBack={() => { setSalesMode('inventory'); setInventoryHistoryOpen(false); setOrderChooserPending(true) }} onSelectCredit={() => { setSalesMode('credit'); setInventoryHistoryOpen(false); setSelectedOrderIds([]) }} sharedMessage={sharedMessage} onSharedMessageConsumed={() => setSharedMessage('')} openChooser={orderChooserPending} onChooserOpened={() => setOrderChooserPending(false)} />
+          </Suspense>
+        ) : salesMode === 'credit' ? (
+          <Suspense fallback={<p role="status">Loading Credit Orders...</p>}>
+            <CreditOrdersPage onSelectMode={mode => { setSalesMode(mode); setInventoryHistoryOpen(false); setSelectedOrderIds([]) }} />
           </Suspense>
         ) : showSalesBasket ? (
           <SalesBasket
