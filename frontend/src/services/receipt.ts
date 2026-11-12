@@ -89,13 +89,13 @@ export async function createReceipt(order: SalesOrder, items: SalesOrderItem[]):
       columns: [
         { width: '*', stack: [
           { text: 'SMKG', fontSize: 22, bold: true, color: green, margin: [0, 0, 0, 4] },
-          { text: 'Sri Mareswari Kirana & General Stores', fontSize: 10, bold: true, color: green, margin: [0, 0, 0, 2] },
+          { text: 'Sri Mareswari Kirana & General Stores', fontSize: 11, bold: true, color: green, margin: [0, 0, 0, 2] },
           { text: STORE.address, fontSize: 8, margin: [0, 6, 0, 3] },
           { text: `Contact: ${STORE.contact}`, fontSize: 8, margin: [0, 0, 0, 3] },
           { text: `GSTIN: ${STORE.gstin}`, fontSize: 8, margin: [0, 0, 0, 3] },
           { text: STORE.dealerType, fontSize: 8 },
         ] },
-        { width: 64, image: goddessIllustration, margin: [8, 18, 0, 0] },
+        { width: 65.5, image: goddessIllustration, margin: [8, 18, 0, 0] },
       ],
       columnGap: 8,
     },

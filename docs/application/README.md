@@ -40,6 +40,8 @@ On mobile (up to 700px wide), Only Order creation/editing shows a compact produc
 
 After submitting, or by opening any existing order, select **Receipt** to preview an A5-style order receipt. It includes a centered **Order Receipt** heading in a rounded black box above SMKG, the Kanaka Mahalakshmi image, full store name, address, labeled contact number, GSTIN, Composition Dealer status, order number, date/time in India, saved product names, quantities, sale prices, line amounts, and total in INR. The optional customer name is collected during order creation/editing, saved on the order, and printed below the timestamp. Internal costs and profit margins are excluded. Long orders continue onto additional PDF pages. Product names include pack size and measurement unit, for example `Rice (0.5 Kilograms)`. New order lines snapshot these details; older orders fall back to the linked product's current pack details when available. Editing a newer order retains its recorded pack details.
 
+On mobile, the store name is 15px and the deity image is 1.5px taller for better visibility.
+
 **Download PDF** saves a file named after the order, such as `SMKG-000006.pdf`. **Share PDF** opens the phone's share sheet where supported: choose WhatsApp and the recipient yourself. Otherwise the PDF downloads for manual attachment. Cancelled sharing does not change the order.
 
 PDF generation works offline once the PWA has cached its assets. Sending through WhatsApp requires connectivity. These are order receipts, not proof of payment; no paid status, GST invoice, or payment tracking is implied. Real iPhone/Android WhatsApp sharing still needs device verification.
