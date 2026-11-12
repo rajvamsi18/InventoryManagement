@@ -14,6 +14,7 @@ The app uses the browser's IndexedDB via Dexie. It creates a `grocery-inventory`
 - `productOptions`: owner-managed categories, brands, measurement units, and package types.
 - `onlyOrders`: independent orders with embedded free-text product/Volume lines, quantities, prices, and totals. Never included in inventory stock, sales metrics, or catalog queries. Backup v6 includes this table and imports v1-v5 compatibly.
 - `customers`, `creditOrders`, `creditPayments`, `creditAdjustments`: customer-level credit accounts and their ledger/void records, separate from inventory and Only Orders.
+- Customer deletion records a non-indexed `deletedAt` marker and `updatedAt` in the existing store, requiring no schema-version change. List queries exclude deleted customers; linked ledger/audit records remain intact. Individual bins and long-press checkbox selection work in Active and Archived directories. `deleteCreditCustomers` checks all selected balances and writes markers atomically; any nonzero or missing account rejects the entire selection. Backup v6 preserves deleted markers and their references.
 - `creditHistory`: append-only edit/void snapshots linked by `customerId`, `targetType`, and `targetId`, with timestamps, action, reason for voids, and full before/after records for edits. Financial edits retain transaction IDs/numbers and do not generate replacement orders/payments. This table is included in backup v6.
 
 Data persists across refreshes and offline use, but site-data clearing can remove it. The app includes JSON backup export/import. A backend sync will provide an additional Postgres backup later.
@@ -39,6 +40,8 @@ Data persists across refreshes and offline use, but site-data clearing can remov
 Credit Order entry/editing uses a two-line order-number/customer identity. Account activity omits product summaries and reuses `OrderHistoryPagination` with an Entries label; customer lists use Customers. Active and Archived lists retain independent page/page-size settings. Activity pagination is scoped to the selected customer, clamps after deletion, and clears selections when navigating pages. Shared pagination defaults remain unchanged for inventory and Only Order history.
 
 Payment editing uses the same compact identity treatment with its payment number. The balance and edit limit are separate paragraphs; payment footer actions use an equal-width, equal-height two-column grid. The Credit Order landing wrapper uses block flow (not the inner-page grid gap), matching the other two Sales landing layouts without shifting the choice panel.
+
+Customer account management links use a separate row between the identity header and metrics. The Credit Order / Record Payment actions below the metrics share a two-column grid with matched padding, borders, and 44px height, including the disabled payment state. Archived accounts instead expose Restore customer above the metrics.
 
 Credit account activity uses order-number-only purchase labels and signed two-decimal amounts without currency prefixes. Customer list balances, the Outstanding balance metric, and payment balance/edit-limit paragraphs also omit `Rs.`; other flow/receipt formatting remains unchanged.
 

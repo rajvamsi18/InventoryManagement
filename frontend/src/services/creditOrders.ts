@@ -28,7 +28,7 @@ export async function createCustomer(db: typeof inventoryDb, name: string, phone
 
   return db.transaction('rw', db.customers, async () => {
     const duplicates = await db.customers.where('normalizedName').equals(normalizedName).toArray()
-    if (duplicates.some(customer => normalizedPhone(customer.phone) === normalizedPhone(trimmedPhone))) {
+    if (duplicates.some(customer => !customer.deletedAt && normalizedPhone(customer.phone) === normalizedPhone(trimmedPhone))) {
       throw new Error('This customer already exists. Select them from the customer list.')
     }
     const now = new Date().toISOString()
@@ -54,10 +54,10 @@ export async function updateCustomer(db: typeof inventoryDb, customerId: string,
 
   return db.transaction('rw', db.customers, async () => {
     const customer = await db.customers.get(customerId)
-    if (!customer) throw new Error('Customer not found.')
+    if (!customer || customer.deletedAt) throw new Error('Customer not found.')
     if (!customer.archivedAt) {
       const duplicates = await db.customers.where('normalizedName').equals(normalizedName).toArray()
-      if (duplicates.some(candidate => candidate.id !== customerId && !candidate.archivedAt && normalizedPhone(candidate.phone) === normalizedPhone(trimmedPhone))) {
+      if (duplicates.some(candidate => candidate.id !== customerId && !candidate.archivedAt && !candidate.deletedAt && normalizedPhone(candidate.phone) === normalizedPhone(trimmedPhone))) {
         throw new Error('This customer already exists. Select them from the customer list.')
       }
     }
@@ -78,7 +78,7 @@ export async function createCreditOrder(db: typeof inventoryDb, customerId: stri
 
   return db.transaction('rw', db.customers, db.creditOrders, async () => {
     const customer = await db.customers.get(customerId)
-    if (!customer || customer.archivedAt) throw new Error('Select an active customer.')
+    if (!customer || customer.archivedAt || customer.deletedAt) throw new Error('Select an active customer.')
     const now = new Date().toISOString()
     const sequence = (await db.creditOrders.toArray()).reduce((highest, order) => Math.max(highest, Number(order.orderNumber.match(/(\d+)$/)?.[1] ?? 0)), 0) + 1
     const order: CreditOrder = {
@@ -104,7 +104,7 @@ export async function replaceCreditOrder(db: typeof inventoryDb, orderId: string
     const existing = await db.creditOrders.get(orderId)
     if (!existing) throw new Error('Credit order not found.')
     const customer = await db.customers.get(existing.customerId)
-    if (!customer) throw new Error('Customer account not found.')
+    if (!customer || customer.deletedAt) throw new Error('Customer account not found.')
     const [orders, payments, adjustments] = await Promise.all([
       db.creditOrders.where('customerId').equals(customer.id).toArray(),
       db.creditPayments.where('customerId').equals(customer.id).toArray(),
@@ -142,7 +142,7 @@ export async function recordCreditPayment(
 
   return db.transaction('rw', db.customers, db.creditOrders, db.creditPayments, db.creditAdjustments, async () => {
     const customer = await db.customers.get(input.customerId)
-    if (!customer || customer.archivedAt) throw new Error('Select an active customer.')
+    if (!customer || customer.archivedAt || customer.deletedAt) throw new Error('Select an active customer.')
     const [orders, payments, adjustments] = await Promise.all([
       db.creditOrders.where('customerId').equals(customer.id).toArray(),
       db.creditPayments.where('customerId').equals(customer.id).toArray(),
@@ -184,7 +184,7 @@ export async function replaceCreditPayment(
     const existing = await db.creditPayments.get(paymentId)
     if (!existing) throw new Error('Credit payment not found.')
     const customer = await db.customers.get(existing.customerId)
-    if (!customer) throw new Error('Customer account not found.')
+    if (!customer || customer.deletedAt) throw new Error('Customer account not found.')
     const [orders, payments, adjustments] = await Promise.all([
       db.creditOrders.where('customerId').equals(customer.id).toArray(),
       db.creditPayments.where('customerId').equals(customer.id).toArray(),
@@ -225,7 +225,7 @@ export async function voidCreditEntries(
   if (new Set(input.entries.map(entry => `${entry.targetType}:${entry.targetId}`)).size !== input.entries.length) throw new Error('Select each entry only once.')
   await db.transaction('rw', [db.customers, db.creditOrders, db.creditPayments, db.creditAdjustments, db.creditHistory], async () => {
     const customer = await db.customers.get(input.customerId)
-    if (!customer) throw new Error('Customer not found.')
+    if (!customer || customer.deletedAt) throw new Error('Customer not found.')
     const [orders, payments, adjustments] = await Promise.all([
       db.creditOrders.where('customerId').equals(customer.id).toArray(),
       db.creditPayments.where('customerId').equals(customer.id).toArray(),
@@ -257,7 +257,7 @@ export async function voidCreditEntries(
 export async function archiveCustomer(db: typeof inventoryDb, customerId: string): Promise<void> {
   await db.transaction('rw', db.customers, db.creditOrders, db.creditPayments, db.creditAdjustments, async () => {
     const customer = await db.customers.get(customerId)
-    if (!customer || customer.archivedAt) throw new Error('Customer is already archived or no longer exists.')
+    if (!customer || customer.archivedAt || customer.deletedAt) throw new Error('Customer is already archived or no longer exists.')
     const [orders, payments, adjustments] = await Promise.all([
       db.creditOrders.where('customerId').equals(customerId).toArray(),
       db.creditPayments.where('customerId').equals(customerId).toArray(),
@@ -271,12 +271,33 @@ export async function archiveCustomer(db: typeof inventoryDb, customerId: string
 export async function restoreCustomer(db: typeof inventoryDb, customerId: string): Promise<void> {
   await db.transaction('rw', db.customers, async () => {
     const customer = await db.customers.get(customerId)
-    if (!customer) throw new Error('Customer not found.')
+    if (!customer || customer.deletedAt) throw new Error('Customer not found.')
     const duplicates = await db.customers.where('normalizedName').equals(customer.normalizedName).toArray()
-    if (duplicates.some(candidate => candidate.id !== customerId && !candidate.archivedAt && normalizedPhone(candidate.phone) === normalizedPhone(customer.phone))) {
+    if (duplicates.some(candidate => candidate.id !== customerId && !candidate.archivedAt && !candidate.deletedAt && normalizedPhone(candidate.phone) === normalizedPhone(customer.phone))) {
       throw new Error('Another active customer has the same name and phone. Update that account before restoring this one.')
     }
     await db.customers.update(customerId, { archivedAt: undefined, updatedAt: new Date().toISOString() })
+  })
+}
+
+export async function deleteCreditCustomers(db: typeof inventoryDb, customerIds: string[]): Promise<void> {
+  if (!customerIds.length) throw new Error('Select at least one customer.')
+  const ids = [...new Set(customerIds)]
+  await db.transaction('rw', [db.customers, db.creditOrders, db.creditPayments, db.creditAdjustments], async () => {
+    const customers = await db.customers.bulkGet(ids)
+    for (const customer of customers) {
+      if (!customer || customer.deletedAt) throw new Error('A selected customer no longer exists. Refresh the list and try again.')
+      const [orders, payments, adjustments] = await Promise.all([
+        db.creditOrders.where('customerId').equals(customer.id).toArray(),
+        db.creditPayments.where('customerId').equals(customer.id).toArray(),
+        db.creditAdjustments.where('customerId').equals(customer.id).toArray(),
+      ])
+      if (calculateCreditBalance(customer.id, orders, payments, adjustments) !== 0) {
+        throw new Error(`Settle the outstanding balance for ${customer.name} before deleting this customer. No customers were deleted.`)
+      }
+    }
+    const now = new Date().toISOString()
+    for (const id of ids) await db.customers.update(id, { deletedAt: now, updatedAt: now })
   })
 }
 
@@ -288,7 +309,8 @@ export function isCreditCustomer(value: unknown): value is Customer {
     (customer.phone === undefined || (typeof customer.phone === 'string' && customer.phone.length <= 40)) &&
     typeof customer.createdAt === 'string' && Number.isFinite(Date.parse(customer.createdAt)) &&
     typeof customer.updatedAt === 'string' && Number.isFinite(Date.parse(customer.updatedAt)) &&
-    (customer.archivedAt === undefined || (typeof customer.archivedAt === 'string' && Number.isFinite(Date.parse(customer.archivedAt))))
+    (customer.archivedAt === undefined || (typeof customer.archivedAt === 'string' && Number.isFinite(Date.parse(customer.archivedAt)))) &&
+    (customer.deletedAt === undefined || (typeof customer.deletedAt === 'string' && Number.isFinite(Date.parse(customer.deletedAt))))
 }
 
 export function isCreditOrder(value: unknown): value is CreditOrder {

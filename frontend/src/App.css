@@ -77,7 +77,14 @@
 .credit-customer-status button { min-height: 34px; border: 0; border-radius: 4px; padding: 7px 12px; color: var(--pine); background: transparent; font-size: 12px; font-weight: 700; }
 .credit-customer-status button[aria-pressed="true"] { color: #fff; background: var(--pine); }
 .credit-customer-list { display: grid; }
-.credit-customer-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-width: 0; border: 0; border-top: 1px solid var(--line); padding: 14px 4px; color: var(--ink); background: transparent; text-align: left; }
+.credit-customer-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; border-top: 1px solid var(--line); }
+.credit-customer-item.selection-mode { grid-template-columns: 18px minmax(0, 1fr) auto; }
+.credit-customer-item.is-selected { background: var(--mint); }
+.credit-customer-item > input { width: 18px; height: 18px; margin: 0; accent-color: var(--pine); }
+.credit-customer-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-width: 0; border: 0; padding: 14px 4px; color: var(--ink); background: transparent; text-align: left; touch-action: pan-y; user-select: none; }
+.credit-customer-selection-actions, .credit-customer-selection-actions > div, .credit-customer-selection-actions label { display: flex; align-items: center; gap: 8px; }
+.credit-customer-selection-actions { justify-content: space-between; color: var(--muted); font-size: 12px; }
+.credit-customer-selection-actions input { accent-color: var(--pine); }
 .credit-customer-row > span { display: grid; gap: 4px; min-width: 0; }
 .credit-customer-row > span:last-child { flex: 0 0 auto; text-align: right; }
 .credit-customer-row strong { overflow-wrap: anywhere; font-size: 13px; }
@@ -87,8 +94,13 @@
 .credit-customer-form label, .credit-order-line label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
 .credit-customer-form input, .credit-customer-form select, .credit-order-line input { width: 100%; min-width: 0; min-height: 42px; border: 1px solid var(--line); border-radius: 5px; padding: 9px 11px; color: var(--ink); background: #fff; font: inherit; font-size: 16px; font-weight: 400; }
 .credit-account-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.credit-account-actions, .credit-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
-.credit-account-actions button, .credit-form-actions button { min-height: 40px; }
+.credit-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+.credit-form-actions button { min-height: 40px; }
+.credit-customer-account-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+.credit-customer-account-controls .back-button { min-height: 36px; margin: 0; padding: 4px 0; }
+.credit-account-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: min(100%, 480px); }
+.credit-account-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-width: 0; height: 44px; margin: 0; border: 1px solid var(--pine); padding: 10px 8px; font-size: 12px; line-height: 1.2; }
+.credit-account-actions button svg { flex: 0 0 auto; }
 .credit-archive-hint { color: var(--muted); font-size: 11px; }
 .credit-section-title { margin: 4px 0 0; color: var(--ink); font-size: 15px; }
 .credit-activity-heading, .credit-activity-selection-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, Check, Clipboard, ClipboardList, CreditCard, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { inventoryDb, type CreditAdjustment, type CreditOrder, type CreditPayment, type CreditPaymentMethod, type Customer, type OnlyOrderSourceMessage } from '../services/database'
-import { archiveCustomer, calculateCreditBalance, createCreditOrder, createCustomer, recordCreditPayment, replaceCreditOrder, replaceCreditPayment, restoreCustomer, updateCustomer, voidCreditEntries } from '../services/creditOrders'
+import { archiveCustomer, calculateCreditBalance, createCreditOrder, createCustomer, deleteCreditCustomers, recordCreditPayment, replaceCreditOrder, replaceCreditPayment, restoreCustomer, updateCustomer, voidCreditEntries } from '../services/creditOrders'
 import { appendReadListDrafts, draftsFromReadList, emptyOnlyOrderLine, hasDuplicateReadListMessage, removeReadListDrafts, replaceReadListDrafts, updateOnlyOrderLine, type OnlyOrderDraft } from '../services/onlyOrders'
 import { readWhatsAppList } from '../services/readWhatsAppList'
 import { OrderHistoryHeader } from './OrderHistoryHeader'
@@ -44,7 +44,7 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
   const activityPressTimer = useRef<number | undefined>(undefined)
   const activityPressOrigin = useRef({ x: 0, y: 0 })
   const longPressedActivity = useRef(false)
-  const customers = useLiveQuery(() => inventoryDb.customers.orderBy('name').toArray(), []) ?? []
+  const customers = useLiveQuery(async () => (await inventoryDb.customers.orderBy('name').toArray()).filter(customer => !customer.deletedAt), []) ?? []
   const orders = useLiveQuery(() => inventoryDb.creditOrders.orderBy('soldAt').reverse().toArray(), []) ?? []
   const payments = useLiveQuery(() => inventoryDb.creditPayments.orderBy('paidAt').reverse().toArray(), []) ?? []
   const adjustments = useLiveQuery(() => inventoryDb.creditAdjustments.toArray(), []) ?? []
@@ -54,6 +54,8 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
   const [customerSearch, setCustomerSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const [customerPages, setCustomerPages] = useState({ active: 1, archived: 1 })
+  const [selectedDirectoryIds, setSelectedDirectoryIds] = useState<string[]>([])
+  const [customerDeleteTargets, setCustomerDeleteTargets] = useState<Customer[]>()
   const [customerPageSizes, setCustomerPageSizes] = useState<{ active: 5 | 10 | 20; archived: 5 | 10 | 20 }>({ active: 5, archived: 5 })
   const [activityPage, setActivityPage] = useState(1)
   const [activityPageSize, setActivityPageSize] = useState<5 | 10 | 20>(5)
@@ -87,6 +89,7 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
     const query = customerSearch.trim().toLocaleLowerCase()
     return !query || customer.name.toLocaleLowerCase().includes(query) || customer.phone?.toLocaleLowerCase().includes(query)
   })
+  const selectedDirectoryCustomers = filteredCustomers.filter(customer => selectedDirectoryIds.includes(customer.id))
   const customerOrders = selectedCustomer ? orders.filter(order => order.customerId === selectedCustomer.id) : []
   const customerPayments = selectedCustomer ? payments.filter(payment => payment.customerId === selectedCustomer.id) : []
   const customerAdjustments = selectedCustomer ? adjustments.filter(adjustment => adjustment.customerId === selectedCustomer.id) : []
@@ -112,6 +115,7 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
 
 
   function showCustomer(customer: Customer) {
+    setSelectedDirectoryIds([])
     setSelectedActivityIds([])
     setActivityPage(1)
     setSelectedCustomerId(customer.id)
@@ -275,11 +279,16 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
 
   function startActivityPress(entry: CreditActivity) {
     if (entry.voided || busy) return
+    startSelectionPress(() => setSelectedActivityIds(current => current.includes(activityKey(entry)) ? current : [...current, activityKey(entry)]))
+  }
+
+  function startSelectionPress(select: () => void) {
+    if (busy) return
     longPressedActivity.current = false
     if (activityPressTimer.current !== undefined) window.clearTimeout(activityPressTimer.current)
     activityPressTimer.current = window.setTimeout(() => {
       longPressedActivity.current = true
-      setSelectedActivityIds(current => current.includes(activityKey(entry)) ? current : [...current, activityKey(entry)])
+      select()
       activityPressTimer.current = undefined
     }, 550)
   }
@@ -304,6 +313,41 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
     if (busy) return
     const key = activityKey(entry)
     setSelectedActivityIds(current => current.includes(key) ? current.filter(id => id !== key) : [...current, key])
+  }
+
+  function toggleDirectoryCustomer(customerId: string) {
+    if (busy) return
+    setSelectedDirectoryIds(current => current.includes(customerId) ? current.filter(id => id !== customerId) : [...current, customerId])
+  }
+
+  function activateDirectoryCustomer(customer: Customer) {
+    cancelActivityPress()
+    if (longPressedActivity.current) {
+      longPressedActivity.current = false
+      return
+    }
+    if (busy) return
+    if (selectedDirectoryIds.length) toggleDirectoryCustomer(customer.id)
+    else showCustomer(customer)
+  }
+
+  function requestCustomerDeletion(targets: Customer[]) {
+    if (busy || !targets.length) return
+    setError('')
+    setCustomerDeleteTargets(targets)
+  }
+
+  async function confirmCustomerDeletion() {
+    if (!customerDeleteTargets || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      await deleteCreditCustomers(inventoryDb, customerDeleteTargets.map(customer => customer.id))
+      setSelectedDirectoryIds([])
+      setCustomerDeleteTargets(undefined)
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Could not delete the selected customers.')
+    } finally { setBusy(false) }
   }
 
   function openOrderReadList(message?: OnlyOrderSourceMessage) {
@@ -378,20 +422,35 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
     const visibleCustomers = displayedCustomers.slice((visiblePage - 1) * pageSize, visiblePage * pageSize)
     return <>
       <div className="credit-customer-tools">
-        <label className="order-history-search"><Search size={17} /><input value={customerSearch} onChange={event => { setCustomerSearch(event.target.value); setCustomerPages({ active: 1, archived: 1 }) }} placeholder="Search customer name or phone" /></label>
+        <label className="order-history-search"><Search size={17} /><input value={customerSearch} disabled={busy} onChange={event => { setCustomerSearch(event.target.value); setCustomerPages({ active: 1, archived: 1 }); setSelectedDirectoryIds([]) }} placeholder="Search customer name or phone" /></label>
         <button type="button" className="primary-button" onClick={() => startCustomerForm(forOrder ? 'order' : 'account')}><Plus size={16} /> Add customer</button>
       </div>
+      {!forOrder && selectedDirectoryCustomers.length > 0 && <div className="credit-customer-selection-actions">
+        <label><input type="checkbox" aria-label="Select all customers on this page" disabled={busy} checked={visibleCustomers.length > 0 && visibleCustomers.every(customer => selectedDirectoryIds.includes(customer.id))} onChange={event => setSelectedDirectoryIds(event.target.checked ? visibleCustomers.map(customer => customer.id) : [])} /> {selectedDirectoryCustomers.length} selected</label>
+        <div><button type="button" className="icon-button" title="Delete selected customers" aria-label="Delete selected customers" disabled={busy} onClick={() => requestCustomerDeletion(selectedDirectoryCustomers)}><Trash2 size={17} /></button>
+        <button type="button" className="icon-button" title="Clear customer selection" aria-label="Clear customer selection" disabled={busy} onClick={() => setSelectedDirectoryIds([])}><X size={17} /></button></div>
+      </div>}
       {displayedCustomers.length ? <div className="credit-customer-list">{visibleCustomers.map(customer => {
         const customerBalance = calculateCreditBalance(customer.id, orders, payments, adjustments)
-        return <button type="button" className="credit-customer-row" key={customer.id} onClick={() => forOrder ? chooseCreditCustomer(customer) : showCustomer(customer)}>
+        const selectionMode = !forOrder && selectedDirectoryIds.length > 0
+        return <div className={`credit-customer-item ${selectionMode ? 'selection-mode' : ''} ${selectedDirectoryIds.includes(customer.id) && !forOrder ? 'is-selected' : ''}`} key={customer.id}>
+          {selectionMode && <input type="checkbox" aria-label={`Select customer ${customer.name}`} checked={selectedDirectoryIds.includes(customer.id)} disabled={busy} onChange={() => toggleDirectoryCustomer(customer.id)} />}
+          <button type="button" className="credit-customer-row" disabled={busy} aria-pressed={selectionMode ? selectedDirectoryIds.includes(customer.id) : undefined}
+            onPointerDown={event => { if (!forOrder) { activityPressOrigin.current = { x: event.clientX, y: event.clientY }; startSelectionPress(() => setSelectedDirectoryIds(current => current.includes(customer.id) ? current : [...current, customer.id])) } }}
+            onPointerUp={cancelActivityPress} onPointerLeave={cancelActivityPress} onPointerCancel={cancelActivityPress}
+            onPointerMove={event => { if (Math.hypot(event.clientX - activityPressOrigin.current.x, event.clientY - activityPressOrigin.current.y) > 10) cancelActivityPress() }}
+            onContextMenu={event => { if (!forOrder) { event.preventDefault(); setSelectedDirectoryIds(current => current.includes(customer.id) ? current : [...current, customer.id]) } }}
+            onClick={() => forOrder ? chooseCreditCustomer(customer) : activateDirectoryCustomer(customer)}>
           <span><strong>{customer.name}</strong><small>{customer.archivedAt ? 'Archived' : customer.phone || 'Phone not set'}</small></span>
           <span><small>Balance</small><strong>{customerBalance.toFixed(2)}</strong></span>
-        </button>
+          </button>
+          {!forOrder && <button type="button" className="icon-button" title={`Delete customer ${customer.name}`} aria-label={`Delete customer ${customer.name}`} disabled={busy} onClick={() => requestCustomerDeletion([customer])}><Trash2 size={17} /></button>}
+        </div>
       })}</div> : <p className="muted">{forOrder ? activeCustomers.length ? 'No customers match your search.' : 'No active customers. Add a customer to get started.' : directoryCustomers.length ? 'No customers match your search.' : showArchived ? 'No archived customers.' : 'No customers yet. Add a customer to get started.'}</p>}
       {displayedCustomers.length > 0 && <OrderHistoryPagination page={visiblePage} pageSize={pageSize} total={displayedCustomers.length}
         itemLabel="Customers" ariaLabel={`${customerStatus === 'archived' ? 'Archived' : 'Active'} credit customer pages`}
-        onPageChange={next => setCustomerPages(current => ({ ...current, [customerStatus]: next }))}
-        onPageSizeChange={size => { setCustomerPageSizes(current => ({ ...current, [customerStatus]: size })); setCustomerPages(current => ({ ...current, [customerStatus]: 1 })) }} />}
+        onPageChange={next => { setCustomerPages(current => ({ ...current, [customerStatus]: next })); setSelectedDirectoryIds([]) }}
+        onPageSizeChange={size => { setCustomerPageSizes(current => ({ ...current, [customerStatus]: size })); setCustomerPages(current => ({ ...current, [customerStatus]: 1 })); setSelectedDirectoryIds([]) }} />}
     </>
   }
 
@@ -419,8 +478,8 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
       {pageBack('Orders', () => setPage('home'), 'Credit Customers')}
       {error && <p role="alert" className="voice-error">{error}</p>}
       <div className="credit-customer-status" role="group" aria-label="Customer status">
-        <button type="button" aria-pressed={!showArchived} onClick={() => { setShowArchived(false); setCustomerSearch('') }}>Active</button>
-        <button type="button" aria-pressed={showArchived} onClick={() => { setShowArchived(true); setCustomerSearch('') }}>Archived</button>
+        <button type="button" aria-pressed={!showArchived} disabled={busy} onClick={() => { setShowArchived(false); setCustomerSearch(''); setSelectedDirectoryIds([]) }}>Active</button>
+        <button type="button" aria-pressed={showArchived} disabled={busy} onClick={() => { setShowArchived(true); setCustomerSearch(''); setSelectedDirectoryIds([]) }}>Archived</button>
       </div>
       {accountList()}
     </>}
@@ -490,14 +549,16 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
 
     {page === 'account' && selectedCustomer && <>
       {pageBack('Credit Customers', () => setPage('customers'), selectedCustomer.name)}
-      <section className="metrics credit-account-metrics"><div><span>Outstanding balance</span><strong>{balance.toFixed(2)}</strong></div><div><span>Credit orders</span><strong>{customerOrders.filter(order => !voidedEntriesForCustomer(customerAdjustments).has(`order:${order.id}`)).length}</strong></div></section>
-      <div className="credit-account-actions">{selectedCustomer.archivedAt ? <button type="button" className="save-button" disabled={busy} onClick={() => void restoreSelectedCustomer()}><Check size={16} /> Restore customer</button> : <>
-        <button type="button" className="primary-button" onClick={() => { setSourceMessages([]); setEditingSourceId(undefined); setEditingCreditOrderId(undefined); setDrafts([emptyOnlyOrderLine()]); setPage('order-method') }}><Plus size={16} /> Credit Order</button>
-        <button type="button" className="save-button" disabled={balance <= 0} onClick={() => { setEditingCreditPaymentId(undefined); setAmount(''); setPaidAt(dateInputValue(new Date())); setMethod('Cash'); setReference(''); setPage('payment') }}><CreditCard size={16} /> Record Payment</button>
+      <div className="credit-customer-account-controls">{selectedCustomer.archivedAt ? <button type="button" className="save-button" disabled={busy} onClick={() => void restoreSelectedCustomer()}><Check size={16} /> Restore customer</button> : <>
         <button type="button" className="back-button" disabled={busy} onClick={editSelectedCustomer}>Edit customer</button>
         <button type="button" className="back-button" disabled={busy} onClick={() => { setError(''); setArchiveOpen(true) }}>Archive customer</button>
       </>}</div>
       {!selectedCustomer.archivedAt && balance !== 0 && <small className="credit-archive-hint">Settle the outstanding balance before archiving this customer.</small>}
+      <section className="metrics credit-account-metrics"><div><span>Outstanding balance</span><strong>{balance.toFixed(2)}</strong></div><div><span>Credit orders</span><strong>{customerOrders.filter(order => !voidedEntriesForCustomer(customerAdjustments).has(`order:${order.id}`)).length}</strong></div></section>
+      {!selectedCustomer.archivedAt && <div className="credit-account-actions">
+        <button type="button" className="primary-button" disabled={busy} onClick={() => { setSourceMessages([]); setEditingSourceId(undefined); setEditingCreditOrderId(undefined); setDrafts([emptyOnlyOrderLine()]); setPage('order-method') }}><Plus size={16} /> Credit Order</button>
+        <button type="button" className="save-button" disabled={balance <= 0 || busy} onClick={() => { setEditingCreditPaymentId(undefined); setAmount(''); setPaidAt(dateInputValue(new Date())); setMethod('Cash'); setReference(''); setPage('payment') }}><CreditCard size={16} /> Record Payment</button>
+      </div>}
       {error && <p role="alert" className="voice-error">{error}</p>}
       <div className="credit-activity-heading"><h3 className="credit-section-title">Account activity</h3>
         {selectedActivity.length > 0 && <div className="credit-activity-selection-actions">
@@ -541,6 +602,13 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
         <div className="credit-payment-actions"><button type="button" className="back-button" disabled={busy} onClick={() => { setEditingCreditPaymentId(undefined); setPage('account') }}>Cancel</button><button type="submit" className="save-button" disabled={busy}><Check size={17} /> {busy ? 'Saving...' : editingCreditPaymentId ? 'Save changes' : 'Save Payment'}</button></div>
       </form>
     </>}
+
+    {customerDeleteTargets && <div className="credit-dialog-backdrop"><section className="credit-void-dialog" role="dialog" aria-modal="true" aria-labelledby="credit-customer-delete-title">
+      <h2 id="credit-customer-delete-title">Delete {customerDeleteTargets.length === 1 ? customerDeleteTargets[0].name : `${customerDeleteTargets.length} customers`}?</h2>
+      <p>These customers will be removed from Active and Archived lists. Their orders, payments, and audit history will be retained. All selected accounts must have a zero balance; otherwise no customers will be deleted.</p>
+      {error && <p role="alert" className="voice-error">{error}</p>}
+      <div className="credit-form-actions"><button type="button" className="back-button" disabled={busy} onClick={() => { setCustomerDeleteTargets(undefined); setError('') }}>Cancel</button><button type="button" className="delete-selected-orders" disabled={busy} onClick={() => void confirmCustomerDeletion()}>{busy ? 'Deleting...' : 'Confirm delete customers'}</button></div>
+    </section></div>}
 
     {voidTarget && <div className="credit-dialog-backdrop">
       <section className="credit-void-dialog" role="dialog" aria-modal="true" aria-labelledby="credit-void-title">

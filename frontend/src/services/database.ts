@@ -105,6 +105,7 @@ export type Customer = {
   createdAt: string
   updatedAt: string
   archivedAt?: string
+  deletedAt?: string
 }
 
 export type CreditOrderLine = OnlyOrderLine

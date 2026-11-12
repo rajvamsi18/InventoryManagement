@@ -44,6 +44,10 @@ Record full or partial payments with a date, method, and optional reference. Pay
 
 Archive customer opens an in-app confirmation. Accounts with an outstanding balance show the amount to settle first; zero-balance accounts move to Archived, where they can be restored. All Credit Order back links have spacing below the Sales tabs.
 
+Edit customer and Archive customer appear directly below the customer name and above the Outstanding balance and Credit orders tiles. Credit Order and Record Payment appear below the tiles as equal-width, equal-height buttons; Record Payment remains disabled when no balance is owed.
+
+Both Active and Archived customer lists have individual bin buttons. Long press a customer to show checkboxes, select multiple customers (or all on the current page), and use the bulk-delete bin. Deletion requires confirmation and zero balances for every selected account; otherwise none are deleted. Deleted customers disappear from both lists and new-order selection, while their linked orders, payments, and audit history remain stored. Unlike Archive, Delete has no restore action in the customer lists.
+
 Credit order entry/editing shows the order number with the customer name beneath it. Product names and quantities appear inside the editor, not in account activity rows. Account Activity and the Active/Archived Credit Customer lists have independent 5/10/20 pagination with Previous/Next controls and visible item counts. Customer search applies before pagination; account balances always use the full ledger, not just the visible page.
 
 Payment editing shows the payment number with the customer name beneath it. Outstanding balance and Payment edit limit appear on separate lines, with aligned, equal-width Cancel and Save changes buttons. Switching between From Inventory, Only Order, and Credit Order keeps the Sales choice panel in the same position.

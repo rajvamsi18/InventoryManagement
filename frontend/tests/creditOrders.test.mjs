@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import assert from 'node:assert/strict'
 import { beforeEach, test } from 'node:test'
 import { inventoryDb } from '../src/services/database.ts'
-import { archiveCustomer, calculateCreditBalance, createCreditOrder, createCustomer, isCreditAdjustment, isCreditCustomer, isCreditOrder, isCreditPayment, recordCreditPayment, replaceCreditOrder, replaceCreditPayment, restoreCustomer, updateCustomer, voidCreditEntries, voidCreditEntry } from '../src/services/creditOrders.ts'
+import { archiveCustomer, calculateCreditBalance, createCreditOrder, createCustomer, deleteCreditCustomers, isCreditAdjustment, isCreditCustomer, isCreditOrder, isCreditPayment, recordCreditPayment, replaceCreditOrder, replaceCreditPayment, restoreCustomer, updateCustomer, voidCreditEntries, voidCreditEntry } from '../src/services/creditOrders.ts'
 import { emptyOnlyOrderLine, updateOnlyOrderLine } from '../src/services/onlyOrders.ts'
 import { readBackup } from '../src/services/backup.ts'
 
@@ -251,4 +251,50 @@ test('invalid edits preserve the original order/payment and write no audit entri
   assert.deepEqual(await inventoryDb.creditOrders.get(order.id), order)
   assert.deepEqual(await inventoryDb.creditPayments.get(payment.id), payment)
   assert.equal(await inventoryDb.creditHistory.count(), 0)
+})
+
+test('deleting active and archived customers retains ledger history and prevents reuse of deleted IDs', async () => {
+  const active = await createCustomer(inventoryDb, 'Delete Active')
+  const archived = await createCustomer(inventoryDb, 'Delete Archived')
+  const kept = await createCustomer(inventoryDb, 'Keep Customer')
+  const order = await createCreditOrder(inventoryDb, active.id, riceDraft())
+  const payment = await recordCreditPayment(inventoryDb, { customerId: active.id, amount: 20, paidAt: '2026-11-13', method: 'Cash' })
+  await replaceCreditPayment(inventoryDb, payment.id, { amount: 20, paidAt: '2026-11-13', method: 'UPI' })
+  await archiveCustomer(inventoryDb, archived.id)
+  const historyBefore = await inventoryDb.creditHistory.toArray()
+  await deleteCreditCustomers(inventoryDb, [active.id, archived.id])
+  assert.ok((await inventoryDb.customers.get(active.id)).deletedAt)
+  assert.ok((await inventoryDb.customers.get(archived.id)).deletedAt)
+  assert.equal((await inventoryDb.customers.get(kept.id)).deletedAt, undefined)
+  assert.deepEqual(await inventoryDb.creditOrders.get(order.id), order)
+  assert.equal(await inventoryDb.creditPayments.count(), 1)
+  assert.deepEqual(await inventoryDb.creditHistory.toArray(), historyBefore)
+  assert.ok(isCreditCustomer(await inventoryDb.customers.get(active.id)))
+  await assert.rejects(createCreditOrder(inventoryDb, active.id, riceDraft()), /Select an active customer/)
+  await assert.rejects(restoreCustomer(inventoryDb, archived.id), /Customer not found/)
+  const newCustomer = await createCustomer(inventoryDb, 'Delete Active')
+  assert.notEqual(newCustomer.id, active.id)
+  const backup = {
+    format: 'stockroom-inventory-backup', version: 6, exportedAt: new Date().toISOString(),
+    products: [], productOptions: [], orders: [], orderItems: [], onlyOrders: [],
+    customers: await inventoryDb.customers.toArray(), creditOrders: await inventoryDb.creditOrders.toArray(),
+    creditPayments: await inventoryDb.creditPayments.toArray(), creditAdjustments: await inventoryDb.creditAdjustments.toArray(),
+    creditHistory: await inventoryDb.creditHistory.toArray(),
+  }
+  const restored = await readBackup(new Blob([JSON.stringify(backup)]))
+  assert.ok(restored.customers.find(customer => customer.id === active.id).deletedAt)
+  assert.equal(restored.creditOrders[0].customerId, active.id)
+  assert.deepEqual(restored.creditHistory, historyBefore)
+})
+
+test('bulk customer deletion is atomic when any account has an outstanding balance or is missing', async () => {
+  const settled = await createCustomer(inventoryDb, 'Settled')
+  const unpaid = await createCustomer(inventoryDb, 'Unpaid')
+  await createCreditOrder(inventoryDb, unpaid.id, riceDraft())
+  await assert.rejects(deleteCreditCustomers(inventoryDb, [settled.id, unpaid.id]), /Settle the outstanding balance for Unpaid/)
+  assert.equal((await inventoryDb.customers.get(settled.id)).deletedAt, undefined)
+  assert.equal((await inventoryDb.customers.get(unpaid.id)).deletedAt, undefined)
+  await assert.rejects(deleteCreditCustomers(inventoryDb, [settled.id, 'missing']), /no longer exists/)
+  assert.equal((await inventoryDb.customers.get(settled.id)).deletedAt, undefined)
+  await assert.rejects(deleteCreditCustomers(inventoryDb, []), /at least one customer/)
 })
