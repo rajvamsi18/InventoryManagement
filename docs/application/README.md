@@ -32,7 +32,7 @@ Only Order records use `OR 1`, `OR 2`, and so on, without zero padding, and embe
 
 In Only Order history, long press a row to reveal checkboxes. Select individual orders or use Select all orders. One selection offers Edit/Delete; multiple selections offer Delete, with confirmation before removing them. Clear selection exits selection mode. Only Order bulk deletion does not change inventory. The detail-page Edit order and Delete controls are compact on mobile.
 
-Only Order history also supports From/To date filters and quick ranges for Today, Last 7 days, and Last month. The order count, average, total amount, and highest-spending named customer update to match the selected date range; the order list combines that range with text search.
+Only Order history also supports From/To date filters and quick ranges for Today, Last 7 days, and Last month. The order count, average, total amount, and **Top Customer** (the named customer with the highest spend in the range) update to match the selected dates; the order list combines that range with text search.
 
 Backup version 4 includes both order flows. Import accepts versions 1-4; older backups contain no Only Order records. Receipts for Only Order use the Volume text exactly as entered.
 

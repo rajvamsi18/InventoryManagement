@@ -343,9 +343,9 @@ export function OnlyOrdersPage({ onBack, sharedMessage, onSharedMessageConsumed,
         </section>
         <section className="metrics order-history-metrics">
           <div><span>Orders</span><strong>{dateFilteredOrders.length}</strong></div>
-          <div><span>Average order</span><strong>{currency(dateFilteredOrders.length ? dateRangeTotal / dateFilteredOrders.length : 0)}</strong></div>
-          <div><span>Total amount</span><strong>{currency(dateRangeTotal)}</strong></div>
-          <div><span>Highest-spending customer</span><strong className="metric-text">{topCustomer?.name ?? '—'}</strong>{topCustomer && <small>{currency(topCustomer.total)} total</small>}</div>
+          <div><span>Average order</span><strong>{(dateFilteredOrders.length ? dateRangeTotal / dateFilteredOrders.length : 0).toFixed(2)}</strong></div>
+          <div><span>Total amount</span><strong>{dateRangeTotal.toFixed(2)}</strong></div>
+          <div><span>Top Customer</span><strong className="metric-text">{topCustomer?.name ?? '—'}</strong>{topCustomer && <small>{topCustomer.total.toFixed(2)}</small>}</div>
         </section>
         <OrderHistorySearch value={orderSearch} onChange={value => { setOrderSearch(value); setHistoryPage(1); setSelectedOrderIds([]) }} />
         {!selectedOrders.length && filteredOrders.length > 0 && <p className="selection-hint">Tap an order for details · Long press to select</p>}
