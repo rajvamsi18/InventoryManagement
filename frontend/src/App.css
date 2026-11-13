@@ -119,6 +119,10 @@
 .credit-activity-row.is-voided > div:first-child > strong { text-decoration: line-through; color: var(--muted); }
 .credit-activity-amount { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .credit-activity-amount > strong { white-space: nowrap; }
+.credit-activity-record-actions { display: flex; align-items: center; gap: 4px; }
+.credit-activity-record-actions .icon-button { flex: 0 0 32px; width: 32px; height: 32px; padding: 6px; }
+.credit-order-detail-actions { justify-self: end; }
+.credit-order-detail-date { margin: 0; color: var(--ink); }
 .credit-activity-amount .icon-button { width: 32px; height: 32px; padding: 6px; }
 .credit-activity-actions { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 3px; }
 .credit-activity-actions button { min-height: 36px; }

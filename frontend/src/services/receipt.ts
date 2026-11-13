@@ -6,11 +6,11 @@ export const STORE = {
   name: 'SMKG - Sri Mareswari Kirana & General Stores',
   address: '14-1-63/3, Pandimetta, Nowroji Road, Visakhapatnam - 530 002',
   contact: '+91 9347319292',
-  gstin: '37AGGPC9606C1ZQ',
+  gstin: '37AGGPC9606C1ZO',
   dealerType: 'Composition Dealer',
 }
 
-const receiptTitleSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="112" height="30" viewBox="0 0 112 30"><rect x="0.5" y="0.5" width="111" height="29" rx="4" fill="none" stroke="#000000" stroke-width="1"/><text x="56" y="19" text-anchor="middle" font-family="Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#000000">Order Receipt</text></svg>'
+const receiptTitleSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="112" height="30" viewBox="0 0 112 30"><rect x="0.5" y="0.5" width="111" height="29" rx="4" fill="none" stroke="#000000" stroke-width="1"/><text x="56" y="19" text-anchor="middle" font-family="Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#000000">Bill of Supply</text></svg>'
 
 export function receiptDate(soldAt: string): string {
   return new Intl.DateTimeFormat('en-IN', {

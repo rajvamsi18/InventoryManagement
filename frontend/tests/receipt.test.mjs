@@ -3,6 +3,7 @@ import test from 'node:test'
 import { readFile } from 'node:fs/promises'
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { createReceipt, receiptDate, receiptProductName, STORE } from '../src/services/receipt.ts'
+import { onlyOrderReceiptItems } from '../src/services/onlyOrders.ts'
 
 const order = { orderNumber: 'SMKG-000006', soldAt: '2026-10-07T12:00:00Z', totalAmount: 180 }
 const item = { productName: 'Rice', quantitySold: 2, unitSellingPrice: 90, lineTotal: 180, unitCost: 67 }
@@ -28,13 +29,28 @@ async function pdfContents(file) {
 
 const contains = (text, value) => text.replace(/\s+/g, '').includes(value.replace(/\s+/g, ''))
 
+test('Only Order and Credit Order PDFs show Bill of Supply and the corrected GSTIN', async () => {
+  assert.equal(STORE.gstin, '37AGGPC9606C1ZO')
+  for (const orderNumber of ['OR 1', 'CR 1']) {
+    const savedOrder = {
+      ...order, id: orderNumber, orderNumber,
+      items: [{ id: 'line-1', productName: 'Rice', volume: '', quantity: 2, price: 90, total: 180 }],
+    }
+    const pdf = await pdfContents(await createReceipt(savedOrder, onlyOrderReceiptItems(savedOrder)))
+    assert.ok(contains(pdf.text, 'GSTIN: 37AGGPC9606C1ZO'), orderNumber)
+    assert.equal(contains(pdf.text, '37AGGPC9606C1ZQ'), false, orderNumber)
+    assert.ok(contains(pdf.text, 'Bill of Supply'), orderNumber)
+    assert.equal(pdf.text.includes('Order Receipt'), false, orderNumber)
+  }
+})
+
 test('receipt uses saved sale values and excludes private costs', async () => {
   const file = await createReceipt({ ...order, customerName: 'Customer Test' }, [item])
   const pdf = (await pdfContents(file)).text
   assert.equal(file.name, 'SMKG-000006.pdf')
   assert.equal(file.type, 'application/pdf')
   assert.ok((await file.text()).startsWith('%PDF-'))
-  for (const value of ['Order Receipt', 'SMKG', 'Order Number:', 'SMKG-000006', 'Rice', '90.00', '180.00', 'Customer Test', STORE.address, `Contact: ${STORE.contact}`, STORE.gstin, STORE.dealerType]) {
+  for (const value of ['Bill of Supply', 'SMKG', 'Order Number:', 'SMKG-000006', 'Rice', '90.00', '180.00', 'Customer Test', STORE.address, `Contact: ${STORE.contact}`, STORE.gstin, STORE.dealerType]) {
     assert.ok(contains(pdf, value), value)
   }
   assert.ok(!pdf.includes('67.00'))
@@ -45,6 +61,24 @@ test('receipt places customer after the date and order number', async () => {
   const pdf = await pdfContents(await createReceipt({ ...order, customerName: 'Raj' }, [item]))
   assert.ok(pdf.text.indexOf('SMKG-000006') < pdf.text.indexOf('Date:'))
   assert.ok(pdf.text.indexOf('Date:') < pdf.text.indexOf('Customer: Raj'))
+})
+
+test('credit order receipts use the shared template and saved free-text sale values', async () => {
+  const creditOrder = {
+    id: 'credit-order-1', orderNumber: 'CR 6', customerId: 'customer-1', customerName: 'Raj Credit',
+    soldAt: order.soldAt, createdAt: order.soldAt, totalAmount: 16.25,
+    items: [{ id: 'credit-line-1', productName: 'Sugar', volume: '1 kg', quantity: 0.25, price: 65, total: 16.25 }],
+  }
+  const receiptItems = onlyOrderReceiptItems(creditOrder)
+  assert.equal(receiptItems[0].orderId, creditOrder.id)
+  assert.equal(receiptItems[0].unitSellingPrice, 65)
+  const file = await createReceipt(creditOrder, receiptItems)
+  assert.equal(file.name, 'CR_6.pdf')
+  const pdf = await pdfContents(file)
+  for (const value of ['Bill of Supply', 'CR 6', 'Customer: Raj Credit', 'Sugar (1 kg)', '0.25', '65.00', '16.25', 'does not confirm payment']) {
+    assert.ok(contains(pdf.text, value), value)
+  }
+  assert.equal('updatedAt' in creditOrder, false)
 })
 
 test('long orders paginate and retain the total', async () => {

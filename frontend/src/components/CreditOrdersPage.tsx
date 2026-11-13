@@ -3,14 +3,15 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, Check, Clipboard, ClipboardList, CreditCard, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { inventoryDb, type CreditAdjustment, type CreditOrder, type CreditPayment, type CreditPaymentMethod, type Customer, type OnlyOrderSourceMessage } from '../services/database'
 import { archiveCustomer, calculateCreditBalance, createCreditOrder, createCustomer, deleteCreditCustomers, recordCreditPayment, replaceCreditOrder, replaceCreditPayment, restoreCustomer, updateCustomer, voidCreditEntries } from '../services/creditOrders'
-import { appendReadListDrafts, draftsFromReadList, emptyOnlyOrderLine, hasDuplicateReadListMessage, removeReadListDrafts, replaceReadListDrafts, updateOnlyOrderLine, type OnlyOrderDraft } from '../services/onlyOrders'
+import { appendReadListDrafts, draftsFromReadList, emptyOnlyOrderLine, hasDuplicateReadListMessage, onlyOrderReceiptItems, removeReadListDrafts, replaceReadListDrafts, updateOnlyOrderLine, type OnlyOrderDraft } from '../services/onlyOrders'
 import { readWhatsAppList } from '../services/readWhatsAppList'
 import { OrderHistoryHeader } from './OrderHistoryHeader'
 import { OrderHistoryPagination } from './OrderHistoryPagination'
 import { MobileOnlyOrderEditor } from './MobileOnlyOrderEditor'
+import { OrderReceipt } from './OrderReceipt'
 
 type Props = { onSelectMode: (mode: 'inventory' | 'only' | 'credit') => void }
-type CreditPage = 'home' | 'customers' | 'choose-customer' | 'customer-form' | 'order-method' | 'read-list' | 'new-order' | 'account' | 'payment'
+type CreditPage = 'home' | 'customers' | 'choose-customer' | 'customer-form' | 'order-method' | 'read-list' | 'new-order' | 'account' | 'payment' | 'order-detail'
 type CustomerFormPurpose = 'account' | 'order'
 type CreditOrderEntryMode = 'list' | 'manual'
 type CreditActivity =
@@ -65,6 +66,7 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
   const [customerPhone, setCustomerPhone] = useState('')
   const [drafts, setDrafts] = useState<OnlyOrderDraft[]>([emptyOnlyOrderLine()])
   const [editingCreditOrderId, setEditingCreditOrderId] = useState<string>()
+  const [receiptOrderId, setReceiptOrderId] = useState<string>()
   const [editingCreditPaymentId, setEditingCreditPaymentId] = useState<string>()
   const [readListText, setReadListText] = useState('')
   const [readListError, setReadListError] = useState('')
@@ -95,6 +97,7 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
   const customerAdjustments = selectedCustomer ? adjustments.filter(adjustment => adjustment.customerId === selectedCustomer.id) : []
   const balance = selectedCustomer ? calculateCreditBalance(selectedCustomer.id, customerOrders, customerPayments, customerAdjustments) : 0
   const voidedEntries = new Map(customerAdjustments.map(adjustment => [`${adjustment.targetType}:${adjustment.targetId}`, adjustment]))
+  const receiptOrder = customerOrders.find(order => order.id === receiptOrderId && !voidedEntries.has(`order:${order.id}`))
   const editingCreditPayment = editingCreditPaymentId ? customerPayments.find(payment => payment.id === editingCreditPaymentId && !voidedEntries.has(`payment:${payment.id}`)) : undefined
   const paymentAmountLimit = balance + (editingCreditPayment?.amount ?? 0)
   const activity: CreditActivity[] = [
@@ -171,11 +174,13 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
     setBusy(true)
     setError('')
     try {
-      if (editingCreditOrderId) await replaceCreditOrder(inventoryDb, editingCreditOrderId, orderDrafts, sourceMessages)
-      else await createCreditOrder(inventoryDb, selectedCustomer.id, orderDrafts, sourceMessages)
+      const savedOrder = editingCreditOrderId
+        ? await replaceCreditOrder(inventoryDb, editingCreditOrderId, orderDrafts, sourceMessages)
+        : await createCreditOrder(inventoryDb, selectedCustomer.id, orderDrafts, sourceMessages)
+      setReceiptOrderId(savedOrder.id)
       setEditingCreditOrderId(undefined)
       setDrafts([emptyOnlyOrderLine()])
-      setPage('account')
+      setPage('order-detail')
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Could not save this credit order.')
     } finally { setBusy(false) }
@@ -214,6 +219,7 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
       await voidCreditEntries(inventoryDb, { customerId: selectedCustomer.id, entries: voidTarget.entries.map(entry => ({ targetType: entry.kind, targetId: entry.id })), reason: voidTarget.reason })
       setSelectedActivityIds([])
       setVoidTarget(undefined)
+      if (page === 'order-detail') setPage('account')
     } catch (voidError) {
       setError(voidError instanceof Error ? voidError.message : 'Could not void this entry.')
     } finally { setBusy(false) }
@@ -306,7 +312,11 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
     }
     if (busy) return
     if (selectedActivityIds.length) toggleActivity(entry)
-    else startOrderEdit(entry)
+    else if (entry.kind === 'order') {
+      setReceiptOrderId(entry.order.id)
+      setError('')
+      setPage('order-detail')
+    } else startOrderEdit(entry)
   }
 
   function toggleActivity(entry: CreditActivity) {
@@ -581,13 +591,36 @@ export function CreditOrdersPage({ onSelectMode }: Props) {
             </span>
             <span className="credit-activity-amount"><strong>{amountText}</strong></span>
           </button>
-          <button type="button" className="icon-button" title={`Delete ${description}`} aria-label={`Delete ${description}`} disabled={busy} onClick={() => voidEntry([entry])}><Trash2 size={15} /></button>
+          <div className="credit-activity-record-actions">
+            <button type="button" className="icon-button" title={`Delete ${description}`} aria-label={`Delete ${description}`} disabled={busy} onClick={() => voidEntry([entry])}><Trash2 size={15} /></button>
+          </div>
         </article>
       })}</div> : <p className="muted">No credit activity yet.</p>}
       {activity.length > 0 && <OrderHistoryPagination page={visibleActivityPage} pageSize={activityPageSize} total={activity.length}
         itemLabel="Entries" ariaLabel="Account activity pages"
         onPageChange={next => { setActivityPage(next); setSelectedActivityIds([]) }}
         onPageSizeChange={size => { setActivityPageSize(size); setActivityPage(1); setSelectedActivityIds([]) }} />}
+    </>}
+
+    {page === 'order-detail' && selectedCustomer && <>
+      {pageBack('Customer account', () => setPage('account'), <span className="credit-order-identity"><span className="credit-order-number">{receiptOrder?.orderNumber ?? 'Order details'}</span><span className="customer-name-highlight">Customer: {receiptOrder?.customerName ?? selectedCustomer.name}</span></span>)}
+      {receiptOrder ? <>
+        <div className="only-order-detail-actions credit-order-detail-actions">
+          <button type="button" className="primary-button" disabled={busy} onClick={() => startOrderEdit({ kind: 'order', id: receiptOrder.id, date: receiptOrder.soldAt, order: receiptOrder })}><Pencil size={15} /> Edit order</button>
+          <button type="button" className="icon-button" title="Delete order" aria-label="Delete order" disabled={busy} onClick={() => voidEntry([{ kind: 'order', id: receiptOrder.id, date: receiptOrder.soldAt, order: receiptOrder }])}><Trash2 size={17} /></button>
+        </div>
+        <p className="credit-order-detail-date">{displayDate(receiptOrder.soldAt)}</p>
+        <section className="panel order-detail-items">
+          <div className="order-detail-header"><span>Product / Volume</span><span>Qty</span><span>Price</span><span>Total</span></div>
+          {receiptOrder.items.map(item => <div className="order-detail-row" key={item.id}>
+            <span><strong>{item.productName}</strong><small>{item.volume}</small></span>
+            <span>{item.quantity}</span><span>{item.price.toFixed(2)}</span><strong>{item.total.toFixed(2)}</strong>
+          </div>)}
+        </section>
+        <p className="only-order-summary"><strong>Order total: {currency(receiptOrder.totalAmount)}</strong></p>
+        <OrderReceipt key={`${receiptOrder.id}:${receiptOrder.updatedAt ?? receiptOrder.createdAt}`}
+          order={{ ...receiptOrder, updatedAt: receiptOrder.updatedAt ?? receiptOrder.createdAt }} items={onlyOrderReceiptItems(receiptOrder)} />
+      </> : <p role="status">This credit order is unavailable or has been deleted.</p>}
     </>}
 
     {page === 'payment' && selectedCustomer && <>

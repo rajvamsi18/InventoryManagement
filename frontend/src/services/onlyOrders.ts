@@ -147,7 +147,7 @@ export async function deleteOnlyOrders(db: typeof inventoryDb, orderIds: string[
   await db.onlyOrders.bulkDelete(orderIds)
 }
 
-export function onlyOrderReceiptItems(order: OnlyOrder): SalesOrderItem[] {
+export function onlyOrderReceiptItems(order: Pick<OnlyOrder, 'id' | 'items'>): SalesOrderItem[] {
   return order.items.map(item => ({
     id: item.id, orderId: order.id, productId: '', productName: item.productName,
     volume: item.volume, category: '', quantitySold: item.quantity,

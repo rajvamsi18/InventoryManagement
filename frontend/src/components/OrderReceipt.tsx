@@ -4,10 +4,10 @@ import goddessIllustrationUrl from '../assets/kanamahalakshmi.jpg'
 import type { SalesOrder, SalesOrderItem } from '../services/database'
 import { createReceipt, downloadReceipt, receiptDate, receiptProductName, STORE } from '../services/receipt'
 
-type Props = { order: SalesOrder; items: SalesOrderItem[] }
+type Props = { order: SalesOrder; items: SalesOrderItem[]; initiallyOpen?: boolean }
 
-export function OrderReceipt({ order, items }: Props) {
-  const [open, setOpen] = useState(false)
+export function OrderReceipt({ order, items, initiallyOpen = false }: Props) {
+  const [open, setOpen] = useState(initiallyOpen)
   const [sharing, setSharing] = useState(false)
   const [message, setMessage] = useState('')
   const [prepared, setPrepared] = useState<{ key: string; file?: File; error?: string }>()
@@ -79,7 +79,7 @@ export function OrderReceipt({ order, items }: Props) {
           {message && <p role="status" className="receipt-status">{message}</p>}
           <article className="receipt-preview" aria-label="Order receipt preview">
             <header className="receipt-store">
-              <h3 className="receipt-document-title">Order Receipt</h3>
+              <h3 className="receipt-document-title">Bill of Supply</h3>
               <div className="receipt-brand-line">
                 <h2>SMKG</h2>
               </div>
